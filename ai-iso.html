@@ -1,293 +1,326 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Isometric Stacked Tiles with Hover Highlighting</title>
-<style>
-  canvas {
-    border: 1px solid black;
-    cursor: pointer;
-  }
-</style>
+  <title>Isometric Stacked Tiles with Hover Highlighting</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-
-<canvas id="myCanvas" width="512" height="512"></canvas>
-
-<script>
-  const TILE_WIDTH = 64;
-  const TILE_HEIGHT = 32;
-
-  const canvas = document.getElementById("myCanvas");
-  const ctx = canvas.getContext("2d");
-
-  const board = [
-    [1, 0, 2, 0],
-    [0, 3, 0, 1],
-    [2, 0, 1, 0],
-    [0, 1, 0, 4],
+  
+  <canvas id="myCanvas" width="1024" height="1024"></canvas>
+  
+  <script>
+    const TILE_WIDTH = 64;
+    const TILE_HEIGHT = 32;
+    
+    const canvas = document.getElementById("myCanvas");
+    const ctx = canvas.getContext("2d");
+    
+    const board = [
+    [1, 0, 2, 0, 1, 0, 1, 0, 2, 0, 1, 0, 1, 0, 2, 0],
+    [0, 3, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1],
+    [2, 0, 1, 0, 1, 0, 1, 0, 2, 0, 4, 0, 1, 0, 1, 0],
+    [0, 1, 0, 4, 0, 1, 0, 4, 0, 1, 0, 6, 0, 1, 0, 1],
+    [1, 0, 2, 0, 1, 0, 1, 0, 2, 0, 1, 0, 1, 0, 2, 0],
+    [0, 3, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1],
+    [2, 0, 1, 0, 1, 0, 1, 0, 2, 0, 4, 0, 1, 0, 1, 0],
+    [0, 1, 0, 4, 0, 1, 0, 4, 0, 1, 0, 6, 0, 1, 0, 1],
+    [1, 0, 2, 0, 1, 0, 1, 0, 2, 0, 1, 0, 1, 0, 2, 0],
+    [0, 3, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1],
+    [2, 0, 1, 0, 1, 0, 1, 0, 2, 0, 4, 0, 1, 0, 1, 0],
+    [0, 1, 0, 4, 0, 1, 0, 4, 0, 1, 0, 6, 0, 1, 0, 1],
+    [1, 0, 2, 0, 1, 0, 1, 0, 2, 0, 1, 0, 1, 0, 2, 0],
+    [0, 3, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1],
+    [2, 0, 1, 0, 1, 0, 1, 0, 2, 0, 4, 0, 1, 0, 1, 0],
+    [0, 1, 0, 4, 0, 1, 0, 4, 0, 1, 0, 6, 0, 1, 0, 1],
   ];
 
-  let highlightedTile = null; // { x: boardX, y: boardY } or null
-
-  function getColorByElevation(elevation) {
-    switch (elevation) {
-      case 0: return "#0000ff"; // blue (water)
-      case 1: return "#ffff00"; // yellow (sandy)
-      case 2: case 3: return "#00c800"; // green (grass)
-      case 4: case 5: return "#808080"; // gray (mountain)
-      case 6: return "#ffffff"; // white (snow)
-      default: return "#808080";
+    
+    let highlightedTile = null; // { x: boardX, y: boardY } or null
+    
+    function getColorByElevation(elevation) {
+      switch (elevation) {
+        case 0: return "#0000ff"; // blue (water)
+        case 1: return "#c9bd4d "; // yellow (sandy)
+        case 2: case 3: return "#00c800"; // green (grass)
+        case 4: case 5: return "#808080"; // gray (mountain)
+        case 6: return "#ffffff"; // white (snow)
+        default: return "#808080";
+      }
     }
-  }
-
-  function drawTile(boardX, boardY, zHeight, color, context, isHighlighted) {
-    const isoX = (boardX - boardY) * TILE_WIDTH / 2;
-    const isoY = (boardX + boardY) * TILE_HEIGHT / 2;
-
-    let drawColor = color;
+    
+    function drawTile(boardX, boardY, zHeight, color, context, isHighlighted) {
+      const isoX = (boardX - boardY) * TILE_WIDTH / 2;
+      const isoY = (boardX + boardY) * TILE_HEIGHT / 2;
+      const topOffsetY = -zHeight * TILE_HEIGHT;
+      
+      // Calculate vertices
+      const v1x = isoX;
+      const v1y = isoY + topOffsetY;
+      
+      const v2x = isoX + TILE_WIDTH / 2;
+      const v2y = isoY + TILE_HEIGHT / 2 + topOffsetY;
+      
+      const v3x = isoX;
+      const v3y = isoY + TILE_HEIGHT + topOffsetY;
+      
+      const v4x = isoX - TILE_WIDTH / 2;
+      const v4y = isoY + TILE_HEIGHT / 2 + topOffsetY;
+      
+      const v5y = isoY + TILE_HEIGHT; // Bottom-left and bottom-right points
+      
+      let drawColor = color;
       if (isHighlighted) {
-          drawColor = adjustBrightness(color, 0.2); // Brighten for highlight
+        drawColor = adjustBrightness(color, 0.2); // Brighten for highlight
       }
-
-    // --- Top Face ---
-    context.fillStyle = drawColor;
-    context.beginPath();
-    context.moveTo(isoX, isoY - zHeight * TILE_HEIGHT);
-    context.lineTo(isoX + TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2 - zHeight * TILE_HEIGHT);
-    context.lineTo(isoX, isoY + TILE_HEIGHT - zHeight * TILE_HEIGHT);
-    context.lineTo(isoX - TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2 - zHeight * TILE_HEIGHT);
-    context.closePath();
-    context.fill();
-
-    // --- Left & Right Faces (only if zHeight > 0) ---
-    if (zHeight > 0) {
-      // --- Left Face ---
-      context.fillStyle = adjustBrightness(drawColor, -0.2);
+      
+      // --- Top Face ---
+      context.fillStyle = drawColor;
       context.beginPath();
-      context.moveTo(isoX - TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2 - zHeight * TILE_HEIGHT);
-      context.lineTo(isoX, isoY + TILE_HEIGHT - zHeight * TILE_HEIGHT);
-      context.lineTo(isoX, isoY + TILE_HEIGHT);
-      context.lineTo(isoX - TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2);
+      context.moveTo(v1x, v1y);
+      context.lineTo(v2x, v2y);
+      context.lineTo(v3x, v3y);
+      context.lineTo(v4x, v4y);
       context.closePath();
       context.fill();
-
-      // --- Right Face ---
-      context.fillStyle = adjustBrightness(drawColor, -0.4);
-      context.beginPath();
-      context.moveTo(isoX + TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2 - zHeight * TILE_HEIGHT);
-      context.lineTo(isoX, isoY + TILE_HEIGHT - zHeight * TILE_HEIGHT);
-      context.lineTo(isoX, isoY + TILE_HEIGHT);
-      context.lineTo(isoX + TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2);
-      context.closePath();
-      context.fill();
+      
+      // --- Left & Right Faces (only if zHeight > 0) ---
+      if (zHeight > 0) {
+        // --- Left Face ---
+        context.fillStyle = adjustBrightness(drawColor, -0.2);
+        context.beginPath();
+        context.moveTo(v4x, v4y);
+        context.lineTo(v3x, v3y);
+        context.lineTo(v1x, v5y);          // v5: Bottom point
+        context.lineTo(v4x, v4y + TILE_HEIGHT); //v6
+        context.closePath();
+        context.fill();
+        
+        // --- Right Face ---
+        context.fillStyle = adjustBrightness(drawColor, -0.4);
+        context.beginPath();
+        context.moveTo(v2x, v2y);
+        context.lineTo(v3x, v3y);
+        context.lineTo(v1x, v5y);          // v5: Bottom point
+        context.lineTo(v2x, v2y + TILE_HEIGHT); //v7
+        context.closePath();
+        context.fill();
+      }
     }
-  }
-
-  function adjustBrightness(color, amount) {
-    let usePound = false;
-
-    if (color[0] == "#") {
-      color = color.slice(1);
-      usePound = true;
+    
+    function adjustBrightness(color, amount) {
+      let usePound = false;
+      
+      if (color[0] == "#") {
+        color = color.slice(1);
+        usePound = true;
+      }
+      
+      let num = parseInt(color, 16);
+      let r = (num >> 16) + amount * 255;
+      if (r > 255) r = 255;
+      else if (r < 0) r = 0;
+      let b = ((num >> 8) & 0x00FF) + amount * 255;
+      if (b > 255) b = 255;
+      else if (b < 0) b = 0;
+      let g = (num & 0x0000FF) + amount * 255;
+      if (g > 255) g = 255;
+      else if (g < 0) g = 0;
+      
+      let newColor = (g | (b << 8) | (r << 16)).toString(16);
+      
+      while(newColor.length < 6){
+        newColor = "0" + newColor;
+      }
+      
+      return (usePound ? "#" : "") + newColor;
     }
-
-    let num = parseInt(color, 16);
-    let r = (num >> 16) + amount * 255;
-    if (r > 255) r = 255;
-    else if (r < 0) r = 0;
-    let b = ((num >> 8) & 0x00FF) + amount * 255;
-    if (b > 255) b = 255;
-    else if (b < 0) b = 0;
-    let g = (num & 0x0000FF) + amount * 255;
-    if (g > 255) g = 255;
-    else if (g < 0) g = 0;
-
-    let newColor = (g | (b << 8) | (r << 16)).toString(16);
-    while (newColor.length < 6) { newColor = "0" + newColor; }
-    return (usePound ? "#" : "") + newColor;
-  }
-
-  function screenToIso(screenX, screenY, offsetX, offsetY) {
-    const isoX = screenX - offsetX;
-    const isoY = screenY - offsetY;
-    const boardX = (isoX / (TILE_WIDTH / 2) + isoY / (TILE_HEIGHT / 2)) / 2;
-    const boardY = (isoY / (TILE_HEIGHT / 2) - isoX / (TILE_WIDTH / 2)) / 2;
-    return { x: boardX, y: boardY };
-  }
-
-  function drawScene(context) {
-    for (let boardY = 0; boardY < board.length; boardY++) {
-      for (let boardX = 0; boardX < board[boardY].length; boardX++) {
-        const elevation = board[boardY][boardX];
-        const tileColor = getColorByElevation(elevation);
-        const isHighlighted = highlightedTile && highlightedTile.x === boardX && highlightedTile.y === boardY;
-
-        for (let i = 0; i < elevation; i++) {
-          drawTile(boardX, boardY, i, tileColor, context, isHighlighted);
-        }
-        if (elevation === 0) {
-          drawTile(boardX, boardY, 0, tileColor, context, isHighlighted);
+    
+    function screenToIso(screenX, screenY, offsetX, offsetY) {
+      const isoX = screenX - offsetX;
+      const isoY = screenY - offsetY;
+      const boardX = (isoX / (TILE_WIDTH / 2) + isoY / (TILE_HEIGHT / 2)) / 2;
+      const boardY = (isoY / (TILE_HEIGHT / 2) - isoX / (TILE_WIDTH / 2)) / 2;
+      return { x: boardX, y: boardY };
+    }
+    
+    function drawScene(context) {
+      for (let boardY = 0; boardY < board.length; boardY++) {
+        for (let boardX = 0; boardX < board[boardY].length; boardX++) {
+          const elevation = board[boardY][boardX];
+          const tileColor = getColorByElevation(elevation);
+          const isHighlighted = highlightedTile && highlightedTile.x === boardX && highlightedTile.y === boardY;
+          
+          for (let i = 0; i < elevation; i++) {
+            drawTile(boardX, boardY, i, tileColor, context, isHighlighted);
+          }
+          if (elevation === 0) {
+            drawTile(boardX, boardY, 0, tileColor, context, isHighlighted);
+          }
         }
       }
     }
-  }
-
+    
     // --- Mouse Event Handlers ---
     canvas.addEventListener("click", function(event) {
-        handleMouseClick(event, 1);
+      handleMouseClick(event, 1);
     });
-
+    
     canvas.addEventListener("contextmenu", function (event){
-        event.preventDefault();
-        handleMouseClick(event, -1);
+      event.preventDefault();
+      handleMouseClick(event, -1);
     });
-
+    
     canvas.addEventListener("mousemove", function(event) {
       handleMouseMove(event);
     });
     canvas.addEventListener("mouseout", function(event) {
-        highlightedTile = null;
-        ctx.clearRect(-canvas.width/2, -200, canvas.width, canvas.height); // Use cached offset
-        drawScene(ctx);
+      highlightedTile = null;
+      ctx.clearRect(-canvas.width/2, -200, canvas.width, canvas.height); // Use cached offset
+      drawScene(ctx);
     });
-
+    
     function handleMouseClick(event, heightChange){
-        const rect = canvas.getBoundingClientRect();
-        const offsetX = canvas.width / 2;
-        const offsetY = 200;
-        const screenX = event.clientX - rect.left;
-        const screenY = event.clientY - rect.top;
-          let isoCoords = screenToIso(screenX, screenY, offsetX, offsetY);
-          let clickedBoardX, clickedBoardY;
-
-        for (let boardY = board.length - 1; boardY >= 0; boardY--) {
-          for (let boardX = board[boardY].length - 1; boardX >= 0; boardX--) {
-              const elevation = board[boardY][boardX];
-
-                for (let i = elevation -1; i>= 0; i--){
-                    const isoX = (boardX - boardY) * TILE_WIDTH/2;
-                    const isoY = (boardX + boardY) * TILE_HEIGHT/2 - i*TILE_HEIGHT;
-
-                    ctx.beginPath();
-                    ctx.moveTo(isoX, isoY);
-                    ctx.lineTo(isoX + TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
-                    ctx.lineTo(isoX, isoY + TILE_HEIGHT);
-                    ctx.lineTo(isoX - TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
-                    ctx.closePath();
-                    if(ctx.isPointInPath(screenX, screenY)){
-                        clickedBoardX = boardX;
-                        clickedBoardY = boardY;
-                        console.log("Clicked tile: boardX =", clickedBoardX, ", boardY =", clickedBoardY, ", elevation =", elevation);
-                        board[clickedBoardY][clickedBoardX] += heightChange;
-                        board[clickedBoardY][clickedBoardX] = Math.max(0, board[clickedBoardY][clickedBoardX]);
-                        ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height); //fixed
-                        drawScene(ctx);
-                        return; // Stop checking after hit
-                    }
-                }
-                if(elevation == 0){
-                    const isoX = (boardX - boardY) * TILE_WIDTH/2;
-                    const isoY = (boardX + boardY) * TILE_HEIGHT/2;
-
-                    ctx.beginPath();
-                    ctx.moveTo(isoX, isoY);
-                    ctx.lineTo(isoX + TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
-                    ctx.lineTo(isoX, isoY + TILE_HEIGHT);
-                    ctx.lineTo(isoX - TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
-                    ctx.closePath();
-                    if(ctx.isPointInPath(screenX, screenY)){
-                        clickedBoardX = boardX;
-                        clickedBoardY = boardY;
-                        console.log("Clicked tile: boardX =", clickedBoardX, ", boardY =", clickedBoardY, ", elevation =", elevation);
-                        board[clickedBoardY][clickedBoardX] += heightChange;
-                        board[clickedBoardY][clickedBoardX] = Math.max(0, board[clickedBoardY][clickedBoardX]);
-                        ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height); //fixed
-                        drawScene(ctx);
-                        return; // Stop checking after hit
-                    }
-                }
+      const rect = canvas.getBoundingClientRect();
+      const offsetX = canvas.width / 2;
+      const offsetY = 200;
+      const screenX = event.clientX - rect.left;
+      const screenY = event.clientY - rect.top;
+      let isoCoords = screenToIso(screenX, screenY, offsetX, offsetY);
+      let clickedBoardX, clickedBoardY;
+      
+      for (let boardY = board.length - 1; boardY >= 0; boardY--) {
+        for (let boardX = board[boardY].length - 1; boardX >= 0; boardX--) {
+          const elevation = board[boardY][boardX];
+          
+          for (let i = elevation -1; i>= 0; i--){
+            const isoX = (boardX - boardY) * TILE_WIDTH/2;
+            const isoY = (boardX + boardY) * TILE_HEIGHT/2 - i*TILE_HEIGHT;
+            
+            ctx.beginPath();
+            ctx.moveTo(isoX, isoY);
+            ctx.lineTo(isoX + TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
+            ctx.lineTo(isoX, isoY + TILE_HEIGHT);
+            ctx.lineTo(isoX - TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
+            ctx.closePath();
+            if(ctx.isPointInPath(screenX, screenY)){
+              clickedBoardX = boardX;
+              clickedBoardY = boardY;
+              console.log("Clicked tile: boardX =", clickedBoardX, ", boardY =", clickedBoardY, ", elevation =", elevation);
+              board[clickedBoardY][clickedBoardX] += heightChange;
+              board[clickedBoardY][clickedBoardX] = Math.max(0, board[clickedBoardY][clickedBoardX]);
+              ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height); //fixed
+              drawScene(ctx);
+              return; // Stop checking after hit
+            }
+          }
+          if(elevation == 0){
+            const isoX = (boardX - boardY) * TILE_WIDTH/2;
+            const isoY = (boardX + boardY) * TILE_HEIGHT/2;
+            
+            ctx.beginPath();
+            ctx.moveTo(isoX, isoY);
+            ctx.lineTo(isoX + TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
+            ctx.lineTo(isoX, isoY + TILE_HEIGHT);
+            ctx.lineTo(isoX - TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
+            ctx.closePath();
+            if(ctx.isPointInPath(screenX, screenY)){
+              clickedBoardX = boardX;
+              clickedBoardY = boardY;
+              console.log("Clicked tile: boardX =", clickedBoardX, ", boardY =", clickedBoardY, ", elevation =", elevation);
+              board[clickedBoardY][clickedBoardX] += heightChange;
+              board[clickedBoardY][clickedBoardX] = Math.max(0, board[clickedBoardY][clickedBoardX]);
+              ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height); //fixed
+              drawScene(ctx);
+              return; // Stop checking after hit
+            }
           }
         }
-
+      }
+      
     }
-
-  function handleMouseMove(event) {
-    const rect = canvas.getBoundingClientRect();
-    const offsetX = canvas.width / 2; // Cached offset
-    const offsetY = 200;
-    const screenX = event.clientX - rect.left;
-    const screenY = event.clientY - rect.top;
-    let isoCoords = screenToIso(screenX, screenY, offsetX, offsetY);
-    let newHighlightedTile = null;
-
-    // Iterate in reverse draw order (top-down) to find hovered tile
+    
+    function handleMouseMove(event) {
+      const rect = canvas.getBoundingClientRect();
+      const offsetX = canvas.width / 2; // Cached offset
+      const offsetY = 200;
+      const screenX = event.clientX - rect.left;
+      const screenY = event.clientY - rect.top;
+      let isoCoords = screenToIso(screenX, screenY, offsetX, offsetY);
+      let newHighlightedTile = null;
+      
+      // Iterate in reverse draw order (top-down) to find hovered tile
       for (let boardY = board.length - 1; boardY >= 0; boardY--) {
-          for (let boardX = board[boardY].length - 1; boardX >= 0; boardX--) {
-            const elevation = board[boardY][boardX];
-
-              for(let i = elevation - 1; i>=0; i--){
-                  const isoX = (boardX - boardY) * TILE_WIDTH / 2;
-                  const isoY = (boardX + boardY) * TILE_HEIGHT / 2 - i * TILE_HEIGHT;
-
-                  ctx.beginPath();
-                  ctx.moveTo(isoX, isoY);
-                  ctx.lineTo(isoX + TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2);
-                  ctx.lineTo(isoX, isoY + TILE_HEIGHT);
-                  ctx.lineTo(isoX - TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2);
-                  ctx.closePath();
-
-                  if (ctx.isPointInPath(screenX, screenY)) {
-                    newHighlightedTile = { x: boardX, y: boardY };
-                      break; // Stop checking other tiles in this stack
-                  }
-              }
-              if(elevation == 0){
-                  const isoX = (boardX - boardY) * TILE_WIDTH/2;
-                    const isoY = (boardX + boardY) * TILE_HEIGHT/2;
-                    ctx.beginPath();
-                    ctx.moveTo(isoX, isoY);
-                    ctx.lineTo(isoX + TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
-                    ctx.lineTo(isoX, isoY + TILE_HEIGHT);
-                    ctx.lineTo(isoX - TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
-                    ctx.closePath();
-                    if(ctx.isPointInPath(screenX, screenY)){
-                        newHighlightedTile = {x:boardX, y:boardY};
-                    }
-              }
-              if(newHighlightedTile)
-                break;
+        for (let boardX = board[boardY].length - 1; boardX >= 0; boardX--) {
+          const elevation = board[boardY][boardX];
+          
+          for(let i = elevation - 1; i>=0; i--){
+            const isoX = (boardX - boardY) * TILE_WIDTH / 2;
+            const isoY = (boardX + boardY) * TILE_HEIGHT / 2 - i * TILE_HEIGHT;
+            
+            ctx.beginPath();
+            ctx.moveTo(isoX, isoY);
+            ctx.lineTo(isoX + TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2);
+            ctx.lineTo(isoX, isoY + TILE_HEIGHT);
+            ctx.lineTo(isoX - TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2);
+            ctx.closePath();
+            
+            if (ctx.isPointInPath(screenX, screenY)) {
+              newHighlightedTile = { x: boardX, y: boardY };
+              break; // Stop checking other tiles in this stack
+            }
+          }
+          if(elevation == 0){
+            const isoX = (boardX - boardY) * TILE_WIDTH/2;
+            const isoY = (boardX + boardY) * TILE_HEIGHT/2;
+            ctx.beginPath();
+            ctx.moveTo(isoX, isoY);
+            ctx.lineTo(isoX + TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
+            ctx.lineTo(isoX, isoY + TILE_HEIGHT);
+            ctx.lineTo(isoX - TILE_WIDTH/2, isoY+TILE_HEIGHT/2);
+            ctx.closePath();
+            if(ctx.isPointInPath(screenX, screenY)){
+              newHighlightedTile = {x:boardX, y:boardY};
+            }
           }
           if(newHighlightedTile)
-            break;
+          break;
+        }
+        if(newHighlightedTile)
+        break;
       }
-
-    if (newHighlightedTile && (!highlightedTile || newHighlightedTile.x !== highlightedTile.x || newHighlightedTile.y !== highlightedTile.y)) {
+      
+      if (newHighlightedTile && (!highlightedTile || newHighlightedTile.x !== highlightedTile.x || newHighlightedTile.y !== highlightedTile.y)) {
         // Highlight changed
         highlightedTile = newHighlightedTile;
         ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height);  // Use cached offset
         drawScene(ctx);
-
-    } else if (!newHighlightedTile && highlightedTile) {
+        
+      } else if (!newHighlightedTile && highlightedTile) {
         // No longer hovering over any tile
         highlightedTile = null;
         ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height); // Use cached offset
         drawScene(ctx);
+      }
     }
-  }
-
-  // Error handling and initialization
-  if (ctx) {
-    ctx.translate(canvas.width / 2, 200);
-    drawScene(ctx);
-  } else {
-    console.error("Canvas not supported!");
-    const canvasContainer = document.getElementById("myCanvas");
-    canvasContainer.parentNode.replaceChild(
+    
+    // Error handling and initialization
+    if (ctx) {
+      ctx.translate(canvas.width / 2, 200);
+      drawScene(ctx);
+    } else {
+      console.error("Canvas not supported!");
+      const canvasContainer = document.getElementById("myCanvas");
+      canvasContainer.parentNode.replaceChild(
       document.createTextNode("Your browser does not support the canvas element."),
       canvasContainer
-    );
-  }
-</script>
-
+      );
+    }
+  </script>
+  
 </body>
 </html>
