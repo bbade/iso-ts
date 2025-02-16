@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Isometric Cubes</title>
+<style>
+  canvas {
+    border: 1px solid black;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="myCanvas" width="512" height="512"></canvas>
+
+<script>
+  const TILE_WIDTH = 64;
+  const TILE_HEIGHT = 32;
+
+  const canvas = document.getElementById("myCanvas");
+  const ctx = canvas.getContext("2d");
+
+    function drawTile(boardX, boardY, zHeight, color, context) {
+        const isoX = (boardX - boardY) * TILE_WIDTH / 2;
+        const isoY = (boardX + boardY) * TILE_HEIGHT / 2;
+
+        // --- Top Face ---
+        context.fillStyle = color;
+        context.beginPath();
+        context.moveTo(isoX, isoY - zHeight);
+        context.lineTo(isoX + TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2 - zHeight);
+        context.lineTo(isoX, isoY + TILE_HEIGHT - zHeight);
+        context.lineTo(isoX - TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2 - zHeight);
+        context.closePath();
+        context.fill();
+
+        // --- Left Face ---
+        context.fillStyle = adjustBrightness(color, -0.2); // Darker shade
+        context.beginPath();
+        context.moveTo(isoX - TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2 - zHeight);
+        context.lineTo(isoX, isoY + TILE_HEIGHT - zHeight);
+        context.lineTo(isoX, isoY + TILE_HEIGHT);
+        context.lineTo(isoX - TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2);
+        context.closePath();
+        context.fill();
+
+
+        // --- Right Face ---
+        context.fillStyle = adjustBrightness(color, -0.4); // Even darker shade
+        context.beginPath();
+        context.moveTo(isoX + TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2 - zHeight);
+        context.lineTo(isoX, isoY + TILE_HEIGHT - zHeight);
+        context.lineTo(isoX, isoY + TILE_HEIGHT);
+        context.lineTo(isoX + TILE_WIDTH / 2, isoY + TILE_HEIGHT / 2);
+        context.closePath();
+        context.fill();
+    }
+
+    function adjustBrightness(color, amount) {
+        // Simple brightness adjustment (works best with hex colors)
+        let usePound = false;
+
+        if (color[0] == "#") {
+            color = color.slice(1);
+            usePound = true;
+        }
+
+        let num = parseInt(color, 16);
+
+        let r = (num >> 16) + amount * 255;
+
+        if (r > 255) r = 255;
+        else if (r < 0) r = 0;
+
+        let b = ((num >> 8) & 0x00FF) + amount * 255;
+
+        if (b > 255) b = 255;
+        else if (b < 0) b = 0;
+
+        let g = (num & 0x0000FF) + amount * 255;
+
+        if (g > 255) g = 255;
+        else if (g < 0) g = 0;
+        let newColor = (g | (b << 8) | (r << 16)).toString(16);
+
+        while(newColor.length < 6){
+            newColor = "0" + newColor;
+        }
+        return (usePound ? "#" : "") + newColor;
+    }
+
+  function drawScene(context) {
+    const board = [
+      [1, 0, 1, 0],
+      [0, 1, 0, 1],
+      [1, 0, 1, 0],
+      [0, 1, 0, 1],
+    ];
+
+    for (let boardY = 0; boardY < board.length; boardY++) {
+      for (let boardX = 0; boardX < board[boardY].length; boardX++) {
+        const tileValue = board[boardY][boardX];
+        const tileColor = tileValue === 1 ? "#00c800" : "#000000"; // Use hex for adjustBrightness
+        const zHeight = tileValue === 1 ? 16 : 1;
+        drawTile(boardX, boardY, zHeight, tileColor, context);
+      }
+    }
+  }
+
+    // Error handling and initialization
+    if (ctx) {
+        ctx.translate(canvas.width / 2, 200);  //Adjusted the origin again
+        drawScene(ctx);
+    } else {
+        console.error("Canvas not supported!");
+        const canvasContainer = document.getElementById("myCanvas");
+        canvasContainer.parentNode.replaceChild(
+            document.createTextNode("Your browser does not support the canvas element."),
+            canvasContainer
+        );
+    }
+</script>
+
+</body>
+</html>
