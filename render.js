@@ -1,28 +1,22 @@
 // render.js
-const TILE_WIDTH = 16;
-const TILE_HEIGHT = 8;
+const TILE_WIDTH = 32;
+const TILE_HEIGHT = 16;
 
 const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d");
 
-let board = []; // Will be initialized dynamically
-let highlightedTile = null;
-let usingTexture = false;
-let textureCanvas = null;
-let textureCtx = null;
+// let board = []; // Now in World.js
+// let highlightedTile = null; // Now in mouse.js
+// let usingTexture = false; // Now in World.js
+// let textureCanvas = null; // Now in World.js
+// let textureCtx = null; // Now in World.js
 
-function initializeBoard(width, height) {
-    board = [];
-    for (let y = 0; y < height; y++) {
-        let row = [];
-        for (let x = 0; x < width; x++) {
-            row.push(0); // Initialize all elevations to 0
-        }
-        board.push(row);
-    }
-}
-//Initial 16x16 board
-initializeBoard(16, 16);
+// function initializeBoard(width, height) { // Now in World.js
+// ...
+// }
+
+// Initial 16x16 board moved to World object
+// initializeBoard(16, 16);  // REMOVE THIS LINE
 
 function getColorByElevation(elevation) {
     switch (elevation) {
@@ -35,23 +29,6 @@ function getColorByElevation(elevation) {
         case 6: return "#ffffff"; // white (snow)
         default: return "#808080";
     }
-}
-
-function getTextureColor(boardX, boardY) {
-    if (!textureCtx) {
-        return "#000000"; // Default color if no texture
-    }
-
-    let texX = boardX;
-    let texY = boardY;
-
-    // Bounds Check
-    if (texX < 0 || texX >= textureCanvas.width || texY < 0 || texY >= textureCanvas.height) {
-        return "#000000"; //Return black if out of bounds.
-    }
-
-    const pixelData = textureCtx.getImageData(texX, texY, 1, 1).data;
-    return `rgb(${pixelData[0]}, ${pixelData[1]}, ${pixelData[2]})`;
 }
 
 function tileVertices(boardX, boardY, zHeight) {
@@ -172,37 +149,18 @@ function screenToIso(screenX, screenY, offsetX, offsetY) {
     return { x: boardX, y: boardY };
 }
 
-function pixelToTile(screenX, screenY, offsetX, offsetY) {
-    // Iterate in reverse draw order (top-down) to find hovered tile
-    for (let boardY = board.length - 1; boardY >= 0; boardY--) {
-        for (let boardX = board[boardY].length - 1; boardX >= 0; boardX--) {
-            const elevation = board[boardY][boardX];
-
-            for (let i = elevation; i >= 0; i--) {
-                const { v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y } = tileVertices(boardX, boardY, i);
-
-                tilePath(ctx, v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y);
-
-                if (ctx.isPointInPath(screenX, screenY)) {
-                    return { x: boardX, y: boardY }; // Return coordinates
-                }
-            }
-        }
-    }
-    return null; // No tile found at this pixel
-}
 
 function drawScene(context) {
   const offsetX = canvas.width / 2;
   const offsetY = 350;
 
-  for (let boardY = 0; boardY < board.length; boardY++) {
-      for (let boardX = 0; boardX < board[boardY].length; boardX++) {
-          const elevation = board[boardY][boardX];
+  for (let boardY = 0; boardY < World.getHeight(); boardY++) {
+      for (let boardX = 0; boardX < World.getWidth(); boardX++) {
+          const elevation = World.getTile(boardX, boardY);
           let tileColor;
 
-          if (usingTexture) {
-              tileColor = getTextureColor(boardX, boardY);
+          if (World.usingTexture) {
+              tileColor = World.getPixel(boardX, boardY);
           } else {
               tileColor = getColorByElevation(elevation);
           }
@@ -223,78 +181,6 @@ function redrawScene() {
     const offsetY = 350;
     ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height);
     drawScene(ctx);
-}
-
-// --- Mouse Event Handlers ---
-canvas.addEventListener("click", function(event) {
-handleMouseClick(event, 1, event.shiftKey); // Left click, no shift
-});
-
-canvas.addEventListener("contextmenu", function(event) {
-event.preventDefault();
-handleMouseClick(event, -1, event.shiftKey); // Right click, no shift
-});
-
-canvas.addEventListener("mousemove", function(event) {
-  handleMouseMove(event);
-});
-canvas.addEventListener("mouseout", function(event) {
-  highlightedTile = null;
-  redrawScene();
-});
-
-
-function handleMouseClick(event, heightChange, isShiftClick) {
-  const rect = canvas.getBoundingClientRect();
-  const offsetX = canvas.width / 2;
-  const offsetY = 350;
-  const screenX = event.clientX - rect.left;
-  const screenY = event.clientY - rect.top;
-
-  const clickedTile = pixelToTile(screenX, screenY, offsetX, offsetY);
-
-  if (clickedTile) {
-       if (usingTexture && isShiftClick) {
-          // Bulk edit
-          const targetColor = getTextureColor(clickedTile.x, clickedTile.y);
-          for (let y = 0; y < board.length; y++) {
-              for (let x = 0; x < board[y].length; x++) {
-                  if (getTextureColor(x, y) === targetColor) {
-                      board[y][x] = Math.max(0, board[y][x] + heightChange);
-                  }
-              }
-          }
-      } else {
-          // Single tile edit
-          console.log("Clicked tile: boardX =", clickedTile.x, ", boardY =", clickedTile.y, ", elevation =", board[clickedTile.y][clickedTile.x]);
-          board[clickedTile.y][clickedTile.x] += heightChange;
-          board[clickedTile.y][clickedTile.x] = Math.max(0, board[clickedTile.y][clickedTile.x]);
-      }
-
-      redrawScene();
-
-  } else {
-      console.log("Clicked outside the board");
-  }
-}
-
-function handleMouseMove(event) {
-const rect = canvas.getBoundingClientRect();
-const offsetX = canvas.width / 2;
-const offsetY = 350;
-const screenX = event.clientX - rect.left;
-const screenY = event.clientY - rect.top;
-
-const hoveredTile = pixelToTile(screenX, screenY, offsetX, offsetY);
-
-if (hoveredTile && (!highlightedTile || hoveredTile.x !== highlightedTile.x || hoveredTile.y !== highlightedTile.y)) {
-  highlightedTile = { x: hoveredTile.x, y: hoveredTile.y, rawX: hoveredTile.x, rawY: hoveredTile.y }; // Store original coords
-    redrawScene();
-
-} else if (!hoveredTile && highlightedTile) {
-    highlightedTile = null;
-    redrawScene();
-}
 }
 
 // --- Initial setup and drawing ---
