@@ -1,6 +1,6 @@
 // render.js
-const TILE_WIDTH = 32;
-const TILE_HEIGHT = 16;
+const TILE_WIDTH = 16;
+const TILE_HEIGHT = 8;
 
 const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d");
@@ -152,7 +152,7 @@ function screenToIso(screenX, screenY, offsetX, offsetY) {
 
 function drawScene(context) {
   const offsetX = canvas.width / 2;
-  const offsetY = 350;
+  const offsetY = 50;
 
   for (let boardY = 0; boardY < World.getHeight(); boardY++) {
       for (let boardX = 0; boardX < World.getWidth(); boardX++) {
@@ -178,14 +178,14 @@ function drawScene(context) {
 
 function redrawScene() {
     const offsetX = canvas.width / 2;
-    const offsetY = 350;
+    const offsetY = 100;
     ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height);
     drawScene(ctx);
 }
 
 // --- Initial setup and drawing ---
 if (ctx) {
-    ctx.translate(canvas.width / 2, 350);
+    ctx.translate(canvas.width / 2, 250);
     drawScene(ctx);
 } else {
     console.error("Canvas not supported!");
