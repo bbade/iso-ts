@@ -1,17 +1,22 @@
 // render.js
-const TILE_WIDTH = 24;
-const TILE_HEIGHT = 12;
-
+const TILE_WIDTH = 16;
+const TILE_HEIGHT = 8;
 
 const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d");
 
-function renderOffsets() {
-    return {
-        x : canvas.width / 2,
-        y : 50
-    }
-}
+// let board = []; // Now in World.js
+// let highlightedTile = null; // Now in mouse.js
+// let usingTexture = false; // Now in World.js
+// let textureCanvas = null; // Now in World.js
+// let textureCtx = null; // Now in World.js
+
+// function initializeBoard(width, height) { // Now in World.js
+// ...
+// }
+
+// Initial 16x16 board moved to World object
+// initializeBoard(16, 16);  // REMOVE THIS LINE
 
 function getColorByElevation(elevation) {
     switch (elevation) {
@@ -96,63 +101,6 @@ function tilePath(context, v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y) {
 }
 
 
-
-function screenToIso(screenX, screenY, offsetX, offsetY) {
-    const isoX = screenX - offsetX;
-    const isoY = screenY - offsetY;
-
-    const boardX = (isoX / (TILE_WIDTH / 2) + isoY / (TILE_HEIGHT / 2)) / 2;
-    const boardY = (isoY / (TILE_HEIGHT / 2) - isoX / (TILE_WIDTH / 2)) / 2;
-    return { x: boardX, y: boardY };
-}
-
-
-function drawScene(context) {
-  for (let boardY = 0; boardY < World.getHeight(); boardY++) {
-      for (let boardX = 0; boardX < World.getWidth(); boardX++) {
-          const elevation = World.getTile(boardX, boardY);
-          let tileColor;
-
-          if (World.usingTexture) {
-              tileColor = World.getPixel(boardX, boardY);
-          } else {
-              tileColor = getColorByElevation(elevation);
-          }
-
-          const isHighlighted = highlightedTile &&
-                                highlightedTile.x === boardX &&
-                                highlightedTile.y === boardY;
-
-        for (let i = 0; i <= elevation; i++) {
-            drawTile(boardX, boardY, i, tileColor, context, isHighlighted);
-        }
-      }
-  }
-}
-
-function redrawScene() {
-    const offsets = renderOffsets();
-    const offsetX = offsets.x;
-    const offsetY = offsets.y;
-
-    ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height);
-    drawScene(ctx);
-}
-
-// --- Initial setup and drawing ---
-if (ctx) {
-    ctx.translate(canvas.width / 2, 250);
-    drawScene(ctx);
-} else {
-    console.error("Canvas not supported!");
-    const canvasContainer = document.getElementById("myCanvas");
-    canvasContainer.parentNode.replaceChild(
-        document.createTextNode("Your browser does not support the canvas element."),
-        canvasContainer
-    );
-}
-
-
 function adjustBrightness(color, amount) {
     // Handle rgb() colors
     if (color.startsWith("rgb")) {
@@ -190,4 +138,60 @@ function adjustBrightness(color, amount) {
 
     return (usePound ? "#" : "") + newColor;
 
+}
+
+function screenToIso(screenX, screenY, offsetX, offsetY) {
+    const isoX = screenX - offsetX;
+    const isoY = screenY - offsetY;
+
+    const boardX = (isoX / (TILE_WIDTH / 2) + isoY / (TILE_HEIGHT / 2)) / 2;
+    const boardY = (isoY / (TILE_HEIGHT / 2) - isoX / (TILE_WIDTH / 2)) / 2;
+    return { x: boardX, y: boardY };
+}
+
+
+function drawScene(context) {
+  const offsetX = canvas.width / 2;
+  const offsetY = 50;
+
+  for (let boardY = 0; boardY < World.getHeight(); boardY++) {
+      for (let boardX = 0; boardX < World.getWidth(); boardX++) {
+          const elevation = World.getTile(boardX, boardY);
+          let tileColor;
+
+          if (World.usingTexture) {
+              tileColor = World.getPixel(boardX, boardY);
+          } else {
+              tileColor = getColorByElevation(elevation);
+          }
+
+          const isHighlighted = highlightedTile &&
+                                highlightedTile.x === boardX &&
+                                highlightedTile.y === boardY;
+
+        for (let i = 0; i <= elevation; i++) {
+            drawTile(boardX, boardY, i, tileColor, context, isHighlighted);
+        }
+      }
+  }
+}
+
+function redrawScene() {
+    const offsetX = canvas.width / 2;
+    const offsetY = 100;
+    ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height);
+    drawScene(ctx);
+}
+
+// --- Initial setup and drawing ---
+if (ctx) {
+    ctx.translate(canvas.width / 2, 250);
+    drawScene(ctx);
+} else {
+    console.error("Canvas not supported!");
+    const canvasContainer = document.getElementById("myCanvas");
+    canvasContainer.parentNode.replaceChild(
+        document.createTextNode("Your browser does not support the canvas element."),
+        canvasContainer
+    );
 }

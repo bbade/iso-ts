@@ -5,12 +5,12 @@ const World = {
     textureCtx: null,
     usingTexture: false,
 
-    initializeBoard(width, height, defaultElevation = 1) {
+    initializeBoard(width, height) {
         this.board = [];
         for (let y = 0; y < height; y++) {
             let row = [];
             for (let x = 0; x < width; x++) {
-                row.push(defaultElevation);
+                row.push(0); // Initialize all elevations to 0
             }
             this.board.push(row);
         }
