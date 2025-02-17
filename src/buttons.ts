@@ -1,5 +1,5 @@
 import World from "./world";
-import { redrawScene } from "./render";
+import { redrawScene } from "./iso-renderer";
 
 const Buttons = {
     registerListeners: () => {

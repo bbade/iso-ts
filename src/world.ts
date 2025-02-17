@@ -3,6 +3,10 @@ interface TileCoordinates {
     x: number;
     y: number;
 }
+
+
+// TODO TODO TODO: Refactor to request a redraw after it changes. 
+
 const World = {
     board: [] as number[][],  // 2D array of numbers (elevations)
     textureCanvas: null as HTMLCanvasElement | null,

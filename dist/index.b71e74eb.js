@@ -600,17 +600,38 @@ function hmrAccept(bundle /*: ParcelRequire */ , id /*: string */ ) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 var _buttons = require("./buttons"); // Import buttons to ensure it runs
 var _buttonsDefault = parcelHelpers.interopDefault(_buttons);
-var _mouse = require("./mouse"); // Import mouse to ensure it runs
-var _render = require("./render"); // Import render to ensure it runs
+var _mouse = require("./mouse");
+var _isoRenderer = require("./iso-renderer");
 var _world = require("./world"); // Import world to ensure it runs
+const orthoHandler = {
+    handleClick: (event)=>{
+    // Do nothing
+    },
+    handleMouseMove: (event)=>{
+    // Do nothing
+    },
+    handleMouseOut: (event)=>{
+    // Do nothing
+    },
+    handleKeyDown: (event)=>{
+    // Do nothing
+    },
+    onDisplay: ()=>{
+    // Do nothing
+    }
+};
+const isoCanvas = document.getElementById("iso-canvas");
+const isoCtx = IsometricContext(isoCanvas);
 (0, _buttonsDefault.default).registerListeners(); // Register button listeners
+const isoRenderer = new (0, _isoRenderer.IsoRenderer)(isoCtx); // Create IsoRenderer instance
+(0, _mouse.MouseListener).initializeListeners(orthoHandler); // Initialize mouse listeners
 
-},{"./buttons":"7OSSg","./mouse":"j0st4","./render":"9AS2t","./world":"1L67l","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"7OSSg":[function(require,module,exports,__globalThis) {
+},{"./buttons":"7OSSg","./world":"1L67l","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./mouse":"j0st4","./iso-renderer":"ekh73"}],"7OSSg":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 var _world = require("./world");
 var _worldDefault = parcelHelpers.interopDefault(_world);
-var _render = require("./render");
+var _isoRenderer = require("./iso-renderer");
 const Buttons = {
     registerListeners: ()=>{
         console.log("registering listeners");
@@ -632,7 +653,7 @@ const Buttons = {
                         const img = new Image();
                         img.onload = function() {
                             (0, _worldDefault.default).setTexture(img); // Use World object
-                            (0, _render.redrawScene)(); // Redraw after setting texture and board
+                            (0, _isoRenderer.redrawScene)(); // Redraw after setting texture and board
                         };
                         img.src = e.target.result;
                     }
@@ -643,7 +664,7 @@ const Buttons = {
         resetButton.addEventListener("click", ()=>{
             (0, _worldDefault.default).clearTexture(); // Use World object
             (0, _worldDefault.default).initializeBoard(16, 16); // Reset to original 16x16 board
-            (0, _render.redrawScene)(); // Redraw after resetting
+            (0, _isoRenderer.redrawScene)(); // Redraw after resetting
             // Reset the file input (so the same file can be selected again)
             textureUpload.value = "";
         });
@@ -651,7 +672,7 @@ const Buttons = {
 };
 exports.default = Buttons;
 
-},{"./world":"1L67l","./render":"9AS2t","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"1L67l":[function(require,module,exports,__globalThis) {
+},{"./world":"1L67l","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./iso-renderer":"ekh73"}],"1L67l":[function(require,module,exports,__globalThis) {
 // World.ts
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
@@ -783,19 +804,19 @@ exports.export = function(dest, destName, get) {
     });
 };
 
-},{}],"9AS2t":[function(require,module,exports,__globalThis) {
-// render.ts
+},{}],"ekh73":[function(require,module,exports,__globalThis) {
+// iso-renderer.ts
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "TILE_WIDTH", ()=>TILE_WIDTH);
 parcelHelpers.export(exports, "TILE_HEIGHT", ()=>TILE_HEIGHT);
-parcelHelpers.export(exports, "redrawScene", ()=>redrawScene);
+parcelHelpers.export(exports, "IsoRenderer", ()=>IsoRenderer);
+parcelHelpers.export(exports, "TILE_WIDTH", ()=>TILE_WIDTH);
+parcelHelpers.export(exports, "TILE_HEIGHT", ()=>TILE_HEIGHT);
 var _world = require("./world");
 var _worldDefault = parcelHelpers.interopDefault(_world);
 const TILE_WIDTH = 16;
 const TILE_HEIGHT = 8;
-const canvas = document.getElementById("myCanvas");
-const ctx = canvas.getContext("2d"); // Assert non-null, checked below
 // Assuming highlightedTile is defined and managed in mouse.ts,
 // we'll declare it here with the correct type.  It's important
 // that this matches the type in mouse.ts.
@@ -835,36 +856,6 @@ function tileVertices(boardX, boardY, zHeight) {
         v6y: isoY + TILE_HEIGHT / 2,
         v7y: isoY + TILE_HEIGHT / 2
     };
-}
-function drawTile(boardX, boardY, zHeight, color, context, isHighlighted) {
-    const { v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y, v5y, v6y, v7y } = tileVertices(boardX, boardY, zHeight);
-    let drawColor = color;
-    if (isHighlighted) drawColor = adjustBrightness(color, 0.2); // Brighten for highlight
-    // --- Top Face ---
-    context.fillStyle = drawColor;
-    tilePath(context, v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y);
-    context.fill();
-    // --- Left & Right Faces (only if zHeight > 0) ---
-    if (zHeight > 0) {
-        // --- Left Face ---
-        context.fillStyle = adjustBrightness(drawColor, -0.2);
-        context.beginPath();
-        context.moveTo(v4x, v4y);
-        context.lineTo(v3x, v3y);
-        context.lineTo(v1x, v5y);
-        context.lineTo(v4x, v6y);
-        context.closePath();
-        context.fill();
-        // --- Right Face ---
-        context.fillStyle = adjustBrightness(drawColor, -0.4);
-        context.beginPath();
-        context.moveTo(v2x, v2y);
-        context.lineTo(v3x, v3y);
-        context.lineTo(v1x, v5y);
-        context.lineTo(v2x, v7y);
-        context.closePath();
-        context.fill();
-    }
 }
 function tilePath(context, v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y) {
     context.beginPath();
@@ -913,162 +904,245 @@ function screenToIso(screenX, screenY, offsetX, offsetY) {
         y: boardY
     };
 }
-function drawScene(context) {
-    const offsetX = canvas.width / 2;
-    const offsetY = 50;
-    for(let boardY = 0; boardY < (0, _worldDefault.default).getHeight(); boardY++)for(let boardX = 0; boardX < (0, _worldDefault.default).getWidth(); boardX++){
-        const elevation = (0, _worldDefault.default).getTile(boardX, boardY); // Assert non-null, as we're within bounds
-        let tileColor;
-        if ((0, _worldDefault.default).usingTexture) tileColor = (0, _worldDefault.default).getPixel(boardX, boardY);
-        else tileColor = getColorByElevation(elevation);
-        const isHighlighted = highlightedTile && highlightedTile.x === boardX && highlightedTile.y === boardY || false;
-        for(let i = 0; i <= elevation; i++)drawTile(boardX, boardY, i, tileColor, context, isHighlighted);
+class IsoRenderer {
+    constructor(canvasId){
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext("2d"); // Assert non-null, checked below
+        if (!this.ctx) {
+            console.error("Canvas context is null");
+            const canvasContainer = document.getElementById(canvasId);
+            canvasContainer.parentNode.replaceChild(document.createTextNode("Your browser does not support the canvas element."), canvasContainer);
+            return;
+        }
+        // Initial setup and drawing
+        this.ctx.translate(this.canvas.width / 2, 250);
+        this.drawScene();
     }
-}
-function redrawScene() {
-    const offsetX = canvas.width / 2;
-    const offsetY = 100;
-    ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height);
-    drawScene(ctx);
-}
-// --- Initial setup and drawing ---
-if (ctx) {
-    ctx.translate(canvas.width / 2, 250);
-    drawScene(ctx);
-} else {
-    console.error("Canvas not supported!");
-    const canvasContainer = document.getElementById("myCanvas");
-    canvasContainer.parentNode.replaceChild(document.createTextNode("Your browser does not support the canvas element."), canvasContainer);
+    drawTile(boardX, boardY, zHeight, color, context, isHighlighted) {
+        const { v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y, v5y, v6y, v7y } = tileVertices(boardX, boardY, zHeight);
+        let drawColor = color;
+        if (isHighlighted) drawColor = this.adjustBrightness(color, 0.2); // Brighten for highlight
+        // --- Top Face ---
+        context.fillStyle = drawColor;
+        tilePath(context, v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y);
+        context.fill();
+        // --- Left & Right Faces (only if zHeight > 0) ---
+        if (zHeight > 0) {
+            // --- Left Face ---
+            context.fillStyle = this.adjustBrightness(drawColor, -0.2);
+            context.beginPath();
+            context.moveTo(v4x, v4y);
+            context.lineTo(v3x, v3y);
+            context.lineTo(v1x, v5y);
+            context.lineTo(v4x, v6y);
+            context.closePath();
+            context.fill();
+            // --- Right Face ---
+            context.fillStyle = this.adjustBrightness(drawColor, -0.4);
+            context.beginPath();
+            context.moveTo(v2x, v2y);
+            context.lineTo(v3x, v3y);
+            context.lineTo(v1x, v5y);
+            context.lineTo(v2x, v7y);
+            context.closePath();
+            context.fill();
+        }
+    }
+    drawScene() {
+        const offsetX = this.canvas.width / 2;
+        const offsetY = 50;
+        for(let boardY = 0; boardY < (0, _worldDefault.default).getHeight(); boardY++)for(let boardX = 0; boardX < (0, _worldDefault.default).getWidth(); boardX++){
+            const elevation = (0, _worldDefault.default).getTile(boardX, boardY); // Assert non-null, as we're within bounds
+            let tileColor;
+            if ((0, _worldDefault.default).usingTexture) tileColor = (0, _worldDefault.default).getPixel(boardX, boardY);
+            else tileColor = getColorByElevation(elevation);
+            const isHighlighted = highlightedTile && highlightedTile.x === boardX && highlightedTile.y === boardY || false;
+            for(let i = 0; i <= elevation; i++)this.drawTile(boardX, boardY, i, tileColor, this.ctx, isHighlighted);
+        }
+    }
+    adjustBrightness(color, amount) {
+        // Handle rgb() colors
+        if (color.startsWith("rgb")) {
+            let [r, g, b] = color.substring(4, color.length - 1).split(",").map(Number);
+            r = Math.min(255, Math.max(0, Math.round(r + amount * 255)));
+            g = Math.min(255, Math.max(0, Math.round(g + amount * 255)));
+            b = Math.min(255, Math.max(0, Math.round(b + amount * 255)));
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+        //Handle hex
+        let usePound = false;
+        if (color[0] == "#") {
+            color = color.slice(1);
+            usePound = true;
+        }
+        let num = parseInt(color, 16);
+        let r = (num >> 16) + amount * 255;
+        if (r > 255) r = 255;
+        else if (r < 0) r = 0;
+        let b = (num >> 8 & 0x00FF) + amount * 255;
+        if (b > 255) b = 255;
+        else if (b < 0) b = 0;
+        let g = (num & 0x0000FF) + amount * 255;
+        if (g > 255) g = 255;
+        else if (g < 0) g = 0;
+        let newColor = (g | b << 8 | r << 16).toString(16);
+        while(newColor.length < 6)newColor = "0" + newColor;
+        return (usePound ? "#" : "") + newColor;
+    }
+    redrawScene() {
+        const offsetX = this.canvas.width / 2;
+        const offsetY = 100;
+        this.ctx.clearRect(-offsetX, -offsetY, this.canvas.width, this.canvas.height);
+        this.drawScene();
+    }
 }
 
 },{"./world":"1L67l","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"j0st4":[function(require,module,exports,__globalThis) {
 // mouse.ts
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "initializeListeners", ()=>initializeListeners);
+parcelHelpers.export(exports, "MouseListener", ()=>MouseListener);
 parcelHelpers.export(exports, "toggleCanvas", ()=>toggleCanvas);
-parcelHelpers.export(exports, "highlightedTile", ()=>highlightedTile);
 parcelHelpers.export(exports, "ISOMETRIC_CANVAS", ()=>ISOMETRIC_CANVAS);
 parcelHelpers.export(exports, "ORTHOGRAPHIC_CANVAS", ()=>ORTHOGRAPHIC_CANVAS);
 var _world = require("./world");
 var _worldDefault = parcelHelpers.interopDefault(_world);
-var _render = require("./render"); // Import constants
-let highlightedTile = null; // Define highlightedTile
+var _isoRenderer = require("./iso-renderer"); // Import constants
+var _model = require("./model");
 // --- Constants for Canvas IDs ---
 const ISOMETRIC_CANVAS = "isometric-canvas";
-const ORTHOGRAPHIC_CANVAS = "ortho-canvas"; // You had this defined, but it was never used
-let activeCanvas = ISOMETRIC_CANVAS; // Track the currently visible canvas
-function initializeListeners(orthographicEvents) {
-    if (orthographicEvents == null) throw new Error("orthographicEvents is null");
-    console.log("initializing listeners");
-    const canvas = document.getElementById("myCanvas");
-    const TILE_WIDTH = 16; //From Render.ts
-    const TILE_HEIGHT = 8;
-    // --- Isometric Event Listener Callbacks ---
-    const isometricEvents = {
-        handleClick: (event)=>{
-            const rect = canvas.getBoundingClientRect();
-            const offsetX = canvas.width / 2;
-            const offsetY = 50;
-            const screenX = event.clientX - rect.left;
-            const screenY = event.clientY - rect.top;
-            const { x, y } = screenToIso(screenX, screenY, offsetX, offsetY);
-            const boardX = Math.floor(x);
-            const boardY = Math.floor(y);
-            if (event.button === 0) (0, _worldDefault.default).increaseElevation(boardX, boardY, event.shiftKey);
-            else if (event.button === 2) (0, _worldDefault.default).decreaseElevation(boardX, boardY, event.shiftKey);
-            (0, _render.redrawScene)();
-        },
-        handleMouseMove: (event)=>{
-            const rect = canvas.getBoundingClientRect();
-            const offsetX = canvas.width / 2;
-            const offsetY = 50; // Consistent offset with drawScene
-            const screenX = event.clientX - rect.left;
-            const screenY = event.clientY - rect.top;
-            const { x, y } = screenToIso(screenX, screenY, offsetX, offsetY);
-            const boardX = Math.floor(x);
-            const boardY = Math.floor(y);
-            if (highlightedTile === null || highlightedTile.x !== boardX || highlightedTile.y !== boardY) {
-                highlightedTile = {
-                    x: boardX,
-                    y: boardY
-                };
-                (0, _render.redrawScene)(); // Redraw on *every* mouse move that changes the highlighted tile
-            }
-        },
-        handleMouseOut: (event)=>{
-            highlightedTile = null;
-            (0, _render.redrawScene)();
-        },
-        handleKeyDown: (event)=>{
-            if (event.key === 'r') {
-                (0, _worldDefault.default).rotateWorld(event.shiftKey);
-                (0, _render.redrawScene)();
-            }
-        }
-    };
-    // --- Generic Event Listeners ---
-    document.addEventListener('click', function(event) {
-        const mouseEvent = event;
-        if (activeCanvas === ISOMETRIC_CANVAS) isometricEvents.handleClick(mouseEvent);
-        else if (activeCanvas === ORTHOGRAPHIC_CANVAS) orthographicEvents.handleClick(mouseEvent);
-    });
-    document.addEventListener('contextmenu', function(event) {
-        const mouseEvent = event;
-        event.preventDefault(); // Prevent default context menu
-        if (activeCanvas === ISOMETRIC_CANVAS) isometricEvents.handleClick(mouseEvent); //Reuse the same handler.
-        else if (activeCanvas === ORTHOGRAPHIC_CANVAS) orthographicEvents.handleClick(mouseEvent);
-    });
-    document.addEventListener('mousemove', function(event) {
-        const mouseEvent = event;
-        if (activeCanvas === ISOMETRIC_CANVAS) isometricEvents.handleMouseMove(mouseEvent);
-        else if (activeCanvas === ORTHOGRAPHIC_CANVAS) orthographicEvents.handleMouseMove(mouseEvent);
-    });
-    document.addEventListener("mouseout", function(event) {
-        const mouseEvent = event;
-        if (activeCanvas === ISOMETRIC_CANVAS) isometricEvents.handleMouseOut(mouseEvent);
-        else if (activeCanvas === ORTHOGRAPHIC_CANVAS) orthographicEvents.handleMouseOut(mouseEvent);
-    });
-    document.addEventListener("keydown", function(event) {
-        const keyboardEvent = event;
-        if (keyboardEvent.key === '`' || keyboardEvent.code === 'Backquote' || keyboardEvent.keyCode === 192) {
-            console.log("switching canvas");
-            event.preventDefault(); // Prevent default tab behavior (focus change)
-            toggleCanvas((0, _render.redrawScene), ()=>{
-                orthographicEvents.onDisplay();
-            });
-            return;
-        }
-        if (activeCanvas === ISOMETRIC_CANVAS) isometricEvents.handleKeyDown(keyboardEvent);
-        else if (activeCanvas === ORTHOGRAPHIC_CANVAS) orthographicEvents.handleKeyDown(keyboardEvent);
-    });
-}
-function screenToIso(screenX, screenY, offsetX, offsetY) {
-    const isoX = screenX - offsetX;
-    const isoY = screenY - offsetY;
-    const boardX = (isoX / ((0, _render.TILE_WIDTH) / 2) + isoY / ((0, _render.TILE_HEIGHT) / 2)) / 2;
-    const boardY = (isoY / ((0, _render.TILE_HEIGHT) / 2) - isoX / ((0, _render.TILE_WIDTH) / 2)) / 2;
+function screenToIso(screenX1, screenY1, offsetX1, offsetY1) {
+    const isoX = screenX1 - offsetX1;
+    const isoY = screenY1 - offsetY1;
+    const boardX = (isoX / ((0, _isoRenderer.TILE_WIDTH) / 2) + isoY / ((0, _isoRenderer.TILE_HEIGHT) / 2)) / 2;
+    const boardY = (isoY / ((0, _isoRenderer.TILE_HEIGHT) / 2) - isoX / ((0, _isoRenderer.TILE_WIDTH) / 2)) / 2;
     return {
         x: boardX,
         y: boardY
     };
 }
-function toggleCanvas(onIsoSelected, onOrthoSelected) {
-    const isoCanvas = document.getElementById(ISOMETRIC_CANVAS);
-    const orthoCanvas = document.getElementById(ORTHOGRAPHIC_CANVAS); //Corrected
-    if (activeCanvas === ISOMETRIC_CANVAS) {
-        isoCanvas.style.display = "none";
-        if (orthoCanvas) orthoCanvas.style.display = "block"; //Corrected
-        activeCanvas = ORTHOGRAPHIC_CANVAS;
-        onOrthoSelected();
-    } else {
-        if (orthoCanvas) orthoCanvas.style.display = "none"; //Corrected
-        isoCanvas.style.display = "block";
-        activeCanvas = ISOMETRIC_CANVAS;
-        onIsoSelected();
+// function toggleCanvas(onIsoSelected: () => void, onOrthoSelected: () => void) {
+//     const isoCanvas = document.getElementById(ISOMETRIC_CANVAS) as HTMLCanvasElement;
+//     const orthoCanvas = document.getElementById(ORTHOGRAPHIC_CANVAS) as HTMLCanvasElement; //Corrected
+//     if (activeCanvas === ISOMETRIC_CANVAS) {
+//         isoCanvas.style.display = "none";
+//         if (orthoCanvas) orthoCanvas.style.display = "block"; //Corrected
+//         activeCanvas = ORTHOGRAPHIC_CANVAS;
+//         onOrthoSelected();
+//     } else {
+//         if (orthoCanvas) orthoCanvas.style.display = "none";  //Corrected
+//         isoCanvas.style.display = "block";
+//         activeCanvas = ISOMETRIC_CANVAS;
+//         onIsoSelected();
+//     }
+// }
+const MouseListener = {
+    initializeListeners: (handler)=>{
+        console.log("initializing listeners");
+        const canvas = document.getElementById("myCanvas");
+        // --- Generic Event Listeners ---
+        document.addEventListener('click', function(event) {
+            const mouseEvent = event;
+            handler.handleClick(mouseEvent);
+        });
+        document.addEventListener('contextmenu', function(event) {
+            const mouseEvent = event;
+            event.preventDefault(); // Prevent default context menu
+            handler.handleClick(mouseEvent);
+        });
+        document.addEventListener('mousemove', function(event) {
+            const mouseEvent = event;
+            handler.handleMouseMove(mouseEvent);
+        });
+        document.addEventListener("mouseout", function(event) {
+            const mouseEvent = event;
+            handler.handleMouseOut(mouseEvent);
+        });
+        document.addEventListener("keydown", function(event) {
+            const keyboardEvent = event;
+            // if (keyboardEvent.key === '`' || keyboardEvent.code === 'Backquote' || keyboardEvent.keyCode === 192) {
+            //     console.log("switching canvas");
+            //     event.preventDefault(); // Prevent default tab behavior (focus change)
+            //     toggleCanvas(redrawScene, () => { orthoEvents.onDisplay!(); });
+            //     return;
+            // }
+            handler.handleKeyDown(keyboardEvent);
+        });
+    }
+};
+class IsometricEvents {
+    constructor(worldHandler){
+        this.worldHandler = worldHandler;
+    }
+    translateEventPointToViewport(clientX, clientY) {
+        const canvas = document.getElementById("myCanvas");
+        const rect = canvas.getBoundingClientRect();
+        const offsetX1 = canvas.width / 2;
+        const offsetY1 = 50;
+        const screenX1 = clientX - rect.left;
+        const screenY1 = clientY - rect.top;
+        return (0, _model.Point)(screenX1, screenY1);
+    }
+    translateEventPointToIsometricPoint(clientX, clientY) {
+    // todo
+    }
+    handleClick(event) {
+        const { x, y } = screenToIso(screenX, screenY, offsetX, offsetY);
+        const boardX = Math.floor(x);
+        const boardY = Math.floor(y);
+        if (event.button === 0) (0, _worldDefault.default).increaseElevation(boardX, boardY, event.shiftKey);
+        else if (event.button === 2) (0, _worldDefault.default).decreaseElevation(boardX, boardY, event.shiftKey);
+        redrawScene();
+    }
+    handleMouseMove(event) {
+        console.log("mouse move " + event);
+        const canvas = document.getElementById("myCanvas");
+        const rect = canvas.getBoundingClientRect();
+        const offsetX1 = canvas.width / 2;
+        const offsetY1 = 50; // Consistent offset with drawScene
+        const screenX1 = event.clientX - rect.left;
+        const screenY1 = event.clientY - rect.top;
+        const { x, y } = screenToIso(screenX1, screenY1, offsetX1, offsetY1);
+        const boardX = Math.floor(x);
+        const boardY = Math.floor(y);
+        if (highlightedTile === null || highlightedTile.x !== boardX || highlightedTile.y !== boardY) {
+            highlightedTile = {
+                x: boardX,
+                y: boardY
+            };
+            redrawScene(); // Redraw on *every* mouse move that changes the highlighted tile
+        }
+    }
+    handleMouseOut(event) {
+        highlightedTile = null;
+        redrawScene();
+    }
+    handleKeyDown(event) {
+        if (event.key === 'r') {
+            (0, _worldDefault.default).rotateWorld(event.shiftKey);
+            redrawScene();
+        }
     }
 }
 
-},{"./world":"1L67l","./render":"9AS2t","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["bTHtU","h7u1C"], "h7u1C", "parcelRequire94c2")
+},{"./world":"1L67l","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./iso-renderer":"ekh73","./model":"1hsjm"}],"1hsjm":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "Point", ()=>Point);
+parcelHelpers.export(exports, "Tile", ()=>Tile);
+class Point {
+    constructor(x, y){
+        this.x = x;
+        this.y = y;
+    }
+}
+class Tile {
+    constructor(point, elevation){
+        this.point = point;
+        this.elevation = elevation;
+    }
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["bTHtU","h7u1C"], "h7u1C", "parcelRequire94c2")
 
 //# sourceMappingURL=index.b71e74eb.js.map
