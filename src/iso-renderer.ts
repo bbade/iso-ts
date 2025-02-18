@@ -1,14 +1,11 @@
 // iso-renderer.ts
 import { IsometricContext } from "iso-context";
-import World from "./world";
+import { World } from "./world";
 import { TileCoordinates } from "model";
 
-
-
-// Assuming highlightedTile is defined and managed in mouse.ts,
-// we'll declare it here with the correct type.  It's important
-// that this matches the type in mouse.ts.
-let highlightedTile: TileCoordinates | null = null;  //From Mouse.js
+export interface RendererCallbacks {
+    redraw(): void; // Callback for redrawing the scene
+}
 
 function getColorByElevation(elevation: number): string {
     switch (elevation) {
@@ -67,11 +64,14 @@ class IsoRenderer {
     private isoContext: IsometricContext;
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
+    private world: World;
 
-    constructor(isometricContext: IsometricContext) {
+    constructor(isometricContext: IsometricContext, world: World) {
         this.isoContext = isometricContext;
         this.canvas = isometricContext.canvas;
         this.ctx = this.canvas.getContext("2d")!; // Assert non-null, checked below
+        this.world = world;
+        world.renderer = this;
 
         // Initial setup and drawing
         const t = this.isoContext.baseTranslation();
@@ -117,19 +117,21 @@ class IsoRenderer {
     }
 
     private drawScene(): void {
+        const world = this.world;
         
 
-        for (let boardY = 0; boardY < World.getHeight(); boardY++) {
-            for (let boardX = 0; boardX < World.getWidth(); boardX++) {
-                const elevation = World.getTile(boardX, boardY)!; // Assert non-null, as we're within bounds
+        for (let boardY = 0; boardY < world.getHeight(); boardY++) {
+            for (let boardX = 0; boardX < world.getWidth(); boardX++) {
+                const elevation = world.getTile(boardX, boardY)!; // Assert non-null, as we're within bounds
                 let tileColor: string;
 
-                if (World.usingTexture) {
-                    tileColor = World.getPixel(boardX, boardY);
+                if (world.usingTexture) {
+                    tileColor = world.getPixel(boardX, boardY);
                 } else {
                     tileColor = getColorByElevation(elevation);
                 }
 
+                const highlightedTile = world.getHoveredTile(); 
                 const isHighlighted: boolean = (highlightedTile &&
                     highlightedTile.x === boardX &&
                     highlightedTile.y === boardY) || false;
@@ -179,9 +181,9 @@ class IsoRenderer {
         return (usePound ? "#" : "") + newColor;
     }
 
-    public redrawScene(): void {
-        const offsetX = this.canvas.width / 2;
-        const offsetY = 100;
+    public redraw(): void {
+        const offsetX = this.isoContext.offsetX;
+        const offsetY = this.isoContext.offsetY;
         this.ctx.clearRect(-offsetX, -offsetY, this.canvas.width, this.canvas.height);
         this.drawScene();
     }

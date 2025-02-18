@@ -1,19 +1,48 @@
 // World.ts
-interface TileCoordinates {
-    x: number;
-    y: number;
-}
 
+import { Point } from "model";
+import {RendererCallbacks} from "iso-renderer";
+
+type TileCoordinates = Point;
+
+
+/**
+ * These take events that have been transformed into board coordinates
+ * and update the state of the world. 
+ */
+export interface WorldEventHandler {
+    setHoveredTile: (x: number, y: number) => void;
+    clearHoveredTile: () => void;
+    changeTileElevation: (x: number, y: number, delta: number) => void;
+    changeTileElevationBulk: (x: number, y: number, delta: number) => void;
+    setTexture(texture: HTMLImageElement): void; 
+    clearTexture(): void;
+    reset(): void;
+}
 
 // TODO TODO TODO: Refactor to request a redraw after it changes. 
 
-const World = {
-    board: [] as number[][],  // 2D array of numbers (elevations)
-    textureCanvas: null as HTMLCanvasElement | null,
-    textureCtx: null as CanvasRenderingContext2D | null,
-    usingTexture: false,
+export class World {
+    board = [] as number[][];  // 2D array of numbers (elevations)
+    textureCanvas = null as HTMLCanvasElement | null;
+    textureCtx = null as CanvasRenderingContext2D | null;
+    usingTexture = false;
+    private hoveredTile = null as TileCoordinates | null;
+    renderer: RendererCallbacks | null = null; 
+    dontRedraw: boolean = false; // enable this to do a number of operations
 
-    initializeBoard(width: number, height: number): void {
+    constructor(width: number, height: number) {
+        this.initBoard(width, height);
+    }
+
+    redraw() {
+        if (this.dontRedraw) {
+            return;
+        }
+        this.renderer?.redraw(); 
+    }
+
+    initBoard(width: number = 16, height: number = 16): void {
         this.board = [];
         for (let y = 0; y < height; y++) {
             let row: number[] = [];
@@ -22,20 +51,24 @@ const World = {
             }
             this.board.push(row);
         }
-    },
+    }
 
     getTile(boardX: number, boardY: number): number | null {
         if (boardX >= 0 && boardX < this.board[0].length && boardY >= 0 && boardY < this.board.length) {
             return this.board[boardY][boardX];
         }
         return null; // Or handle out-of-bounds differently
-    },
+    }
 
     setTile(boardX: number, boardY: number, elevation: number): void {
         if (boardX >= 0 && boardX < this.board[0].length && boardY >= 0 && boardY < this.board.length) {
             this.board[boardY][boardX] = elevation;
         }
-    },
+    }
+
+    getHoveredTile(): TileCoordinates | null {
+        return this.hoveredTile;
+    }
 
     getPixel(boardX: number, boardY: number): string {
         if (!this.textureCtx) {
@@ -52,61 +85,36 @@ const World = {
 
         const pixelData = this.textureCtx.getImageData(texX, texY, 1, 1).data;
         return `rgb(${pixelData[0]}, ${pixelData[1]}, ${pixelData[2]})`;
-    },
-    setTexture(img: HTMLImageElement): void {
-        this.textureCanvas = document.createElement("canvas");
-        this.textureCanvas.width = img.width;
-        this.textureCanvas.height = img.height;
-        this.textureCtx = this.textureCanvas.getContext("2d")!; // Assert non-null
-        this.textureCtx.drawImage(img, 0, 0);
-        this.usingTexture = true;
-        this.initializeBoard(img.width, img.height);
+    }
 
-    },
-    clearTexture(): void {
-        this.usingTexture = false;
-        this.textureCanvas = null;
-        this.textureCtx = null;
-    },
+    
+
     getWidth(): number {
         return this.board[0].length;
-    },
+    }
+
     getHeight(): number {
         return this.board.length;
-    },
-    increaseElevation(boardX: number, boardY: number, bulkEdit: boolean): void {
-        if (boardX >= 0 && boardX < this.getWidth() && boardY >= 0 && boardY < this.getHeight()) {
-            if (bulkEdit && this.usingTexture) {
-                const targetColor = this.getPixel(boardX, boardY);
-                for (let y = 0; y < this.getHeight(); y++) {
-                    for (let x = 0; x < this.getWidth(); x++) {
-                        if (this.getPixel(x, y) === targetColor) {
-                            this.setTile(x, y, Math.max(0, this.getTile(x, y)! + 1)); // Assert non-null
-                        }
-                    }
-                }
-            } else {
-                this.setTile(boardX, boardY, Math.max(0, this.getTile(boardX, boardY)! + 1)); // Assert non-null
-            }
-        }
-    },
+    }
 
-    decreaseElevation(boardX: number, boardY: number, bulkEdit: boolean): void {
+    changeElevation(boardX: number, boardY: number, delta: number, bulkEdit: boolean): void {
         if (boardX >= 0 && boardX < this.getWidth() && boardY >= 0 && boardY < this.getHeight()) {
             if (bulkEdit && this.usingTexture) {
                 const targetColor = this.getPixel(boardX, boardY);
                 for (let y = 0; y < this.getHeight(); y++) {
                     for (let x = 0; x < this.getWidth(); x++) {
                         if (this.getPixel(x, y) === targetColor) {
-                            this.setTile(x, y, Math.max(0, this.getTile(x, y)! - 1)); // Assert non-null
+                            this.setTile(x, y, Math.max(0, this.getTile(x, y)! + delta)); // Assert non-null
                         }
                     }
                 }
             } else {
-                this.setTile(boardX, boardY, Math.max(0, this.getTile(boardX, boardY)! - 1)); // Assert non-null
+                this.setTile(boardX, boardY, Math.max(0, this.getTile(boardX, boardY)! + delta)); // Assert non-null
             }
         }
-    },
+        
+        this.redraw();
+    }
 
     rotateWorld(counterClockwise: boolean = false): void {
         // --- Rotate Texture (if using texture) ---
@@ -139,10 +147,57 @@ const World = {
             newBoard = this.board[0].map((val, index) => this.board.map(row => row[row.length-1-index]));
         }
         this.board = newBoard; // Assign the new board
+
+        this.redraw();
+    }
+
+    private clearTexture() {
+        this.usingTexture = false;
+        this.textureCanvas = null;
+        this.textureCtx = null;
+
+        this.redraw();
+    }
+
+    readonly eventHandler: WorldEventHandler = {
+        setHoveredTile: (x: number, y: number):  void => {
+            this.hoveredTile = new Point(x, y);
+            this.redraw();
+        },
+        clearHoveredTile: (): void => {
+            this.hoveredTile= null;
+            this.redraw();
+        },
+        changeTileElevation:(x: number, y: number, delta: number): void => {
+            this.changeElevation(x, y, delta, false); 
+        },
+        changeTileElevationBulk: (x: number, y: number, delta: number): void => {
+            this.changeElevation(x, y, delta, true); 
+        },
+
+        setTexture: (img: HTMLImageElement ): void => {
+            this.textureCanvas = document.createElement("canvas");
+            this.textureCanvas.width = img.width;
+            this.textureCanvas.height = img.height;
+            this.textureCtx = this.textureCanvas.getContext("2d")!; // Assert non-null
+            this.textureCtx.drawImage(img, 0, 0);
+            this.usingTexture = true;
+            this.initBoard(img.width, img.height);
+
+            this.redraw();
+        },
+    
+        clearTexture: (): void => {
+            this.clearTexture();
+        },
+
+        reset: (): void => {
+            this.dontRedraw = true;
+            this.clearTexture();
+            this.initBoard();
+            this.dontRedraw = false;
+            this.redraw();
+         }
+
     }
 };
-
-//Initial 16x16 board at startup
-World.initializeBoard(16,16);
-
-export default World;

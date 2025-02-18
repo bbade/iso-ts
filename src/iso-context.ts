@@ -4,15 +4,11 @@ export class IsometricContext {
     readonly canvas: HTMLCanvasElement;
     tileWidth: number;
     tileHeight: number;
-    offsetX: number;
-    offsetY: number;
 
     constructor (canvas: HTMLCanvasElement, tileWidth = 16, tileHeight  = 8) {
         this.canvas = canvas;
         this.tileWidth = tileWidth;
         this.tileHeight = tileHeight;
-        this.offsetX = this.canvas.width / 2;
-        this.offsetY = 50;
     }
 
     baseTranslation(): Point {
@@ -20,12 +16,17 @@ export class IsometricContext {
     }
 
     screenToIso(screenX: number, screenY: number): TileCoordinates {
-        const isoX = screenX - offsetX;
-        const isoY = screenY - offsetY;
+        const baseT = this.baseTranslation();
+        const isoX = screenX - baseT.x;
+        const isoY = screenY - baseT.y;
     
-        const boardX: number = (isoX / (this.tileWidth / 2) + isoY / (this.tileHeight / 2)) / 2;
-        const boardY: number  = (isoY / (this.tileHeight / 2) - isoX / (this.tileWidth / 2)) / 2;
-        return { x: boardX, y: boardY };
+        const boardXMaybeFloat: number = (isoX / (this.tileWidth / 2) + isoY / (this.tileHeight / 2)) / 2;
+        const boardYMaybeFloat: number  = (isoY / (this.tileHeight / 2) - isoX / (this.tileWidth / 2)) / 2;
+
+        const boardX = Math.floor(boardXMaybeFloat);
+        const boardY = Math.floor(boardYMaybeFloat);
+
+        return { boardX: boardX, boardY: boardY };
     }
 
     tileVertices(boardX: number, boardY: number, zHeight: number): Vertices {

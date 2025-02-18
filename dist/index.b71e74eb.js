@@ -603,57 +603,45 @@ var _buttonsDefault = parcelHelpers.interopDefault(_buttons);
 var _mouse = require("./mouse");
 var _isoRenderer = require("./iso-renderer");
 var _world = require("./world"); // Import world to ensure it runs
-const orthoHandler = {
-    handleClick: (event)=>{
-    // Do nothing
-    },
-    handleMouseMove: (event)=>{
-    // Do nothing
-    },
-    handleMouseOut: (event)=>{
-    // Do nothing
-    },
-    handleKeyDown: (event)=>{
-    // Do nothing
-    },
-    onDisplay: ()=>{
-    // Do nothing
-    }
-};
+var _isoContext = require("iso-context");
+var _isoEventHandler = require("iso-event-handler");
 const isoCanvas = document.getElementById("iso-canvas");
-const isoCtx = IsometricContext(isoCanvas);
-(0, _buttonsDefault.default).registerListeners(); // Register button listeners
-const isoRenderer = new (0, _isoRenderer.IsoRenderer)(isoCtx); // Create IsoRenderer instance
-(0, _mouse.MouseListener).initializeListeners(orthoHandler); // Initialize mouse listeners
+const isoCtx = new (0, _isoContext.IsometricContext)(isoCanvas);
+const world = new (0, _world.World)(16, 16);
+const isoEventHandler = new (0, _isoEventHandler.IsometricEventHandler)(isoCanvas, isoCtx, world.eventHandler); // Create IsometricEventHandler instance
+const buttonEventHandler = new (0, _buttonsDefault.default)(world.eventHandler);
+const isoRenderer = new (0, _isoRenderer.IsoRenderer)(isoCtx, world); // Create IsoRenderer instance
+(0, _mouse.MouseListener).initializeListeners(isoEventHandler); // Initialize mouse listeners
 
-},{"./buttons":"7OSSg","./world":"1L67l","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./mouse":"j0st4","./iso-renderer":"ekh73"}],"7OSSg":[function(require,module,exports,__globalThis) {
+},{"./buttons":"7OSSg","./mouse":"j0st4","./iso-renderer":"ekh73","./world":"1L67l","iso-context":"fUbgX","iso-event-handler":"dVI9N","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"7OSSg":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-var _world = require("./world");
-var _worldDefault = parcelHelpers.interopDefault(_world);
-var _isoRenderer = require("./iso-renderer");
-const Buttons = {
-    registerListeners: ()=>{
+class Buttons {
+    constructor(worldEventHandler){
+        this.worldEvents = worldEventHandler;
+        this.registerListeners();
+    }
+    registerListeners() {
         console.log("registering listeners");
         // --- Texture Upload and Reset Logic ---
         const uploadButton = document.getElementById("uploadButton");
         const textureUpload = document.getElementById("textureUpload");
         const resetButton = document.getElementById("resetButton");
-        uploadButton.addEventListener("click", ()=>{
+        uploadButton.addEventListener("click", (event)=>{
+            event.stopPropagation(); // Prevent event from bubbling up
             textureUpload.click(); // Trigger the file input
         });
-        textureUpload.addEventListener("change", function(event) {
+        textureUpload.addEventListener("change", (event)=>{
             console.log("upload clicked");
             const target = event.target;
             const file = target.files ? target.files[0] : null; //Check for null
             if (file && file.type === "image/png") {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = (e)=>{
                     if (e.target && e.target.result) {
                         const img = new Image();
-                        img.onload = function() {
-                            (0, _worldDefault.default).setTexture(img); // Use World object
-                            (0, _isoRenderer.redrawScene)(); // Redraw after setting texture and board
+                        img.onload = ()=>{
+                            this.worldEvents.setTexture(img);
                         };
                         img.src = e.target.result;
                     }
@@ -661,118 +649,15 @@ const Buttons = {
                 reader.readAsDataURL(file);
             } else alert("Please upload a PNG image.");
         });
-        resetButton.addEventListener("click", ()=>{
-            (0, _worldDefault.default).clearTexture(); // Use World object
-            (0, _worldDefault.default).initializeBoard(16, 16); // Reset to original 16x16 board
-            (0, _isoRenderer.redrawScene)(); // Redraw after resetting
+        resetButton.addEventListener("click", (event)=>{
+            event.stopPropagation(); // Prevent event from bubbling up
+            this.worldEvents.reset();
             // Reset the file input (so the same file can be selected again)
             textureUpload.value = "";
         });
     }
-};
+}
 exports.default = Buttons;
-
-},{"./world":"1L67l","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./iso-renderer":"ekh73"}],"1L67l":[function(require,module,exports,__globalThis) {
-// World.ts
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-const World = {
-    board: [],
-    textureCanvas: null,
-    textureCtx: null,
-    usingTexture: false,
-    initializeBoard (width, height) {
-        this.board = [];
-        for(let y = 0; y < height; y++){
-            let row = [];
-            for(let x = 0; x < width; x++)row.push(0); // Initialize all elevations to 0
-            this.board.push(row);
-        }
-    },
-    getTile (boardX, boardY) {
-        if (boardX >= 0 && boardX < this.board[0].length && boardY >= 0 && boardY < this.board.length) return this.board[boardY][boardX];
-        return null; // Or handle out-of-bounds differently
-    },
-    setTile (boardX, boardY, elevation) {
-        if (boardX >= 0 && boardX < this.board[0].length && boardY >= 0 && boardY < this.board.length) this.board[boardY][boardX] = elevation;
-    },
-    getPixel (boardX, boardY) {
-        if (!this.textureCtx) return "#000000"; // Default color if no texture
-        let texX = boardX;
-        let texY = boardY;
-        // Bounds Check
-        if (texX < 0 || texX >= this.textureCanvas.width || texY < 0 || texY >= this.textureCanvas.height) return "#000000"; //Return black if out of bounds.
-        const pixelData = this.textureCtx.getImageData(texX, texY, 1, 1).data;
-        return `rgb(${pixelData[0]}, ${pixelData[1]}, ${pixelData[2]})`;
-    },
-    setTexture (img) {
-        this.textureCanvas = document.createElement("canvas");
-        this.textureCanvas.width = img.width;
-        this.textureCanvas.height = img.height;
-        this.textureCtx = this.textureCanvas.getContext("2d"); // Assert non-null
-        this.textureCtx.drawImage(img, 0, 0);
-        this.usingTexture = true;
-        this.initializeBoard(img.width, img.height);
-    },
-    clearTexture () {
-        this.usingTexture = false;
-        this.textureCanvas = null;
-        this.textureCtx = null;
-    },
-    getWidth () {
-        return this.board[0].length;
-    },
-    getHeight () {
-        return this.board.length;
-    },
-    increaseElevation (boardX, boardY, bulkEdit) {
-        if (boardX >= 0 && boardX < this.getWidth() && boardY >= 0 && boardY < this.getHeight()) {
-            if (bulkEdit && this.usingTexture) {
-                const targetColor = this.getPixel(boardX, boardY);
-                for(let y = 0; y < this.getHeight(); y++){
-                    for(let x = 0; x < this.getWidth(); x++)if (this.getPixel(x, y) === targetColor) this.setTile(x, y, Math.max(0, this.getTile(x, y) + 1)); // Assert non-null
-                }
-            } else this.setTile(boardX, boardY, Math.max(0, this.getTile(boardX, boardY) + 1)); // Assert non-null
-        }
-    },
-    decreaseElevation (boardX, boardY, bulkEdit) {
-        if (boardX >= 0 && boardX < this.getWidth() && boardY >= 0 && boardY < this.getHeight()) {
-            if (bulkEdit && this.usingTexture) {
-                const targetColor = this.getPixel(boardX, boardY);
-                for(let y = 0; y < this.getHeight(); y++){
-                    for(let x = 0; x < this.getWidth(); x++)if (this.getPixel(x, y) === targetColor) this.setTile(x, y, Math.max(0, this.getTile(x, y) - 1)); // Assert non-null
-                }
-            } else this.setTile(boardX, boardY, Math.max(0, this.getTile(boardX, boardY) - 1)); // Assert non-null
-        }
-    },
-    rotateWorld (counterClockwise = false) {
-        // --- Rotate Texture (if using texture) ---
-        if (this.usingTexture && this.textureCanvas) {
-            const rotatedCanvas = document.createElement('canvas');
-            rotatedCanvas.width = this.textureCanvas.height; // Swap width/height
-            rotatedCanvas.height = this.textureCanvas.width;
-            const rotatedCtx = rotatedCanvas.getContext('2d'); // Assert non-null
-            rotatedCtx.clearRect(0, 0, rotatedCanvas.width, rotatedCanvas.height); //Clear
-            if (counterClockwise) {
-                rotatedCtx.rotate(-Math.PI / 2);
-                rotatedCtx.drawImage(this.textureCanvas, -this.textureCanvas.width, 0);
-            } else {
-                rotatedCtx.rotate(Math.PI / 2);
-                rotatedCtx.drawImage(this.textureCanvas, 0, -this.textureCanvas.height);
-            }
-            this.textureCanvas = rotatedCanvas; // Replace the old canvas
-            this.textureCtx = rotatedCtx;
-        }
-        // --- Rotate Board ---
-        let newBoard;
-        if (!counterClockwise) newBoard = this.board[0].map((val, index)=>this.board.map((row)=>row[index]).reverse());
-        else newBoard = this.board[0].map((val, index)=>this.board.map((row)=>row[row.length - 1 - index]));
-        this.board = newBoard; // Assign the new board
-    }
-};
-//Initial 16x16 board at startup
-World.initializeBoard(16, 16);
-exports.default = World;
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"gkKU3":[function(require,module,exports,__globalThis) {
 exports.interopDefault = function(a) {
@@ -804,23 +689,50 @@ exports.export = function(dest, destName, get) {
     });
 };
 
-},{}],"ekh73":[function(require,module,exports,__globalThis) {
+},{}],"j0st4":[function(require,module,exports,__globalThis) {
+// mouse.ts
+/**
+ * These are concrete event handlers that translate events from
+ * document coordinates into the coordinates of the current renderer
+ */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "MouseListener", ()=>MouseListener);
+/**
+ * Singleton that listens to the document for events, then dispatches.
+ */ const MouseListener = {
+    initializeListeners: (handler)=>{
+        console.log("initializing listeners");
+        const canvas = document.getElementById("myCanvas");
+        // --- Generic Event Listeners ---
+        document.addEventListener('click', function(event) {
+            const mouseEvent = event;
+            handler.handleClick(mouseEvent);
+        });
+        document.addEventListener('contextmenu', function(event) {
+            const mouseEvent = event;
+            event.preventDefault(); // Prevent default context menu
+            handler.handleClick(mouseEvent);
+        });
+        document.addEventListener('mousemove', function(event) {
+            const mouseEvent = event;
+            handler.handleMouseMove(mouseEvent);
+        });
+        document.addEventListener("mouseout", function(event) {
+            const mouseEvent = event;
+            handler.handleMouseOut(mouseEvent);
+        });
+        document.addEventListener("keydown", function(event) {
+            const keyboardEvent = event;
+            handler.handleKeyDown(keyboardEvent);
+        });
+    }
+};
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"ekh73":[function(require,module,exports,__globalThis) {
 // iso-renderer.ts
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "TILE_WIDTH", ()=>TILE_WIDTH);
-parcelHelpers.export(exports, "TILE_HEIGHT", ()=>TILE_HEIGHT);
 parcelHelpers.export(exports, "IsoRenderer", ()=>IsoRenderer);
-parcelHelpers.export(exports, "TILE_WIDTH", ()=>TILE_WIDTH);
-parcelHelpers.export(exports, "TILE_HEIGHT", ()=>TILE_HEIGHT);
-var _world = require("./world");
-var _worldDefault = parcelHelpers.interopDefault(_world);
-const TILE_WIDTH = 16;
-const TILE_HEIGHT = 8;
-// Assuming highlightedTile is defined and managed in mouse.ts,
-// we'll declare it here with the correct type.  It's important
-// that this matches the type in mouse.ts.
-let highlightedTile = null; //From Mouse.js
 function getColorByElevation(elevation) {
     switch(elevation){
         case 0:
@@ -838,32 +750,6 @@ function getColorByElevation(elevation) {
         default:
             return "#808080";
     }
-}
-function tileVertices(boardX, boardY, zHeight) {
-    const isoX = (boardX - boardY) * TILE_WIDTH / 2;
-    const isoY = (boardX + boardY) * TILE_HEIGHT / 2;
-    const topOffsetY = -zHeight * TILE_HEIGHT;
-    return {
-        v1x: isoX,
-        v1y: isoY + topOffsetY,
-        v2x: isoX + TILE_WIDTH / 2,
-        v2y: isoY + TILE_HEIGHT / 2 + topOffsetY,
-        v3x: isoX,
-        v3y: isoY + TILE_HEIGHT + topOffsetY,
-        v4x: isoX - TILE_WIDTH / 2,
-        v4y: isoY + TILE_HEIGHT / 2 + topOffsetY,
-        v5y: isoY + TILE_HEIGHT,
-        v6y: isoY + TILE_HEIGHT / 2,
-        v7y: isoY + TILE_HEIGHT / 2
-    };
-}
-function tilePath(context, v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y) {
-    context.beginPath();
-    context.moveTo(v1x, v1y);
-    context.lineTo(v2x, v2y);
-    context.lineTo(v3x, v3y);
-    context.lineTo(v4x, v4y);
-    context.closePath();
 }
 function adjustBrightness(color, amount) {
     // Handle rgb() colors
@@ -894,37 +780,25 @@ function adjustBrightness(color, amount) {
     while(newColor.length < 6)newColor = "0" + newColor;
     return (usePound ? "#" : "") + newColor;
 }
-function screenToIso(screenX, screenY, offsetX, offsetY) {
-    const isoX = screenX - offsetX;
-    const isoY = screenY - offsetY;
-    const boardX = (isoX / (TILE_WIDTH / 2) + isoY / (TILE_HEIGHT / 2)) / 2;
-    const boardY = (isoY / (TILE_HEIGHT / 2) - isoX / (TILE_WIDTH / 2)) / 2;
-    return {
-        x: boardX,
-        y: boardY
-    };
-}
 class IsoRenderer {
-    constructor(canvasId){
-        this.canvas = document.getElementById(canvasId);
+    constructor(isometricContext, world){
+        this.isoContext = isometricContext;
+        this.canvas = isometricContext.canvas;
         this.ctx = this.canvas.getContext("2d"); // Assert non-null, checked below
-        if (!this.ctx) {
-            console.error("Canvas context is null");
-            const canvasContainer = document.getElementById(canvasId);
-            canvasContainer.parentNode.replaceChild(document.createTextNode("Your browser does not support the canvas element."), canvasContainer);
-            return;
-        }
+        this.world = world;
+        world.renderer = this;
         // Initial setup and drawing
-        this.ctx.translate(this.canvas.width / 2, 250);
+        const t = this.isoContext.baseTranslation();
+        this.ctx.translate(t.x, t.y);
         this.drawScene();
     }
     drawTile(boardX, boardY, zHeight, color, context, isHighlighted) {
-        const { v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y, v5y, v6y, v7y } = tileVertices(boardX, boardY, zHeight);
+        const { v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y, v5y, v6y, v7y } = this.isoContext.tileVertices(boardX, boardY, zHeight);
         let drawColor = color;
         if (isHighlighted) drawColor = this.adjustBrightness(color, 0.2); // Brighten for highlight
         // --- Top Face ---
         context.fillStyle = drawColor;
-        tilePath(context, v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y);
+        this.isoContext.tilePath(context, v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y);
         context.fill();
         // --- Left & Right Faces (only if zHeight > 0) ---
         if (zHeight > 0) {
@@ -949,13 +823,13 @@ class IsoRenderer {
         }
     }
     drawScene() {
-        const offsetX = this.canvas.width / 2;
-        const offsetY = 50;
-        for(let boardY = 0; boardY < (0, _worldDefault.default).getHeight(); boardY++)for(let boardX = 0; boardX < (0, _worldDefault.default).getWidth(); boardX++){
-            const elevation = (0, _worldDefault.default).getTile(boardX, boardY); // Assert non-null, as we're within bounds
+        const world = this.world;
+        for(let boardY = 0; boardY < world.getHeight(); boardY++)for(let boardX = 0; boardX < world.getWidth(); boardX++){
+            const elevation = world.getTile(boardX, boardY); // Assert non-null, as we're within bounds
             let tileColor;
-            if ((0, _worldDefault.default).usingTexture) tileColor = (0, _worldDefault.default).getPixel(boardX, boardY);
+            if (world.usingTexture) tileColor = world.getPixel(boardX, boardY);
             else tileColor = getColorByElevation(elevation);
+            const highlightedTile = world.getHoveredTile();
             const isHighlighted = highlightedTile && highlightedTile.x === boardX && highlightedTile.y === boardY || false;
             for(let i = 0; i <= elevation; i++)this.drawTile(boardX, boardY, i, tileColor, this.ctx, isHighlighted);
         }
@@ -989,143 +863,152 @@ class IsoRenderer {
         while(newColor.length < 6)newColor = "0" + newColor;
         return (usePound ? "#" : "") + newColor;
     }
-    redrawScene() {
-        const offsetX = this.canvas.width / 2;
-        const offsetY = 100;
+    redraw() {
+        const offsetX = this.isoContext.offsetX;
+        const offsetY = this.isoContext.offsetY;
         this.ctx.clearRect(-offsetX, -offsetY, this.canvas.width, this.canvas.height);
         this.drawScene();
     }
 }
 
-},{"./world":"1L67l","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"j0st4":[function(require,module,exports,__globalThis) {
-// mouse.ts
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"1L67l":[function(require,module,exports,__globalThis) {
+// World.ts
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "MouseListener", ()=>MouseListener);
-parcelHelpers.export(exports, "toggleCanvas", ()=>toggleCanvas);
-parcelHelpers.export(exports, "ISOMETRIC_CANVAS", ()=>ISOMETRIC_CANVAS);
-parcelHelpers.export(exports, "ORTHOGRAPHIC_CANVAS", ()=>ORTHOGRAPHIC_CANVAS);
-var _world = require("./world");
-var _worldDefault = parcelHelpers.interopDefault(_world);
-var _isoRenderer = require("./iso-renderer"); // Import constants
-var _model = require("./model");
-// --- Constants for Canvas IDs ---
-const ISOMETRIC_CANVAS = "isometric-canvas";
-function screenToIso(screenX1, screenY1, offsetX1, offsetY1) {
-    const isoX = screenX1 - offsetX1;
-    const isoY = screenY1 - offsetY1;
-    const boardX = (isoX / ((0, _isoRenderer.TILE_WIDTH) / 2) + isoY / ((0, _isoRenderer.TILE_HEIGHT) / 2)) / 2;
-    const boardY = (isoY / ((0, _isoRenderer.TILE_HEIGHT) / 2) - isoX / ((0, _isoRenderer.TILE_WIDTH) / 2)) / 2;
-    return {
-        x: boardX,
-        y: boardY
-    };
-}
-// function toggleCanvas(onIsoSelected: () => void, onOrthoSelected: () => void) {
-//     const isoCanvas = document.getElementById(ISOMETRIC_CANVAS) as HTMLCanvasElement;
-//     const orthoCanvas = document.getElementById(ORTHOGRAPHIC_CANVAS) as HTMLCanvasElement; //Corrected
-//     if (activeCanvas === ISOMETRIC_CANVAS) {
-//         isoCanvas.style.display = "none";
-//         if (orthoCanvas) orthoCanvas.style.display = "block"; //Corrected
-//         activeCanvas = ORTHOGRAPHIC_CANVAS;
-//         onOrthoSelected();
-//     } else {
-//         if (orthoCanvas) orthoCanvas.style.display = "none";  //Corrected
-//         isoCanvas.style.display = "block";
-//         activeCanvas = ISOMETRIC_CANVAS;
-//         onIsoSelected();
-//     }
-// }
-const MouseListener = {
-    initializeListeners: (handler)=>{
-        console.log("initializing listeners");
-        const canvas = document.getElementById("myCanvas");
-        // --- Generic Event Listeners ---
-        document.addEventListener('click', function(event) {
-            const mouseEvent = event;
-            handler.handleClick(mouseEvent);
-        });
-        document.addEventListener('contextmenu', function(event) {
-            const mouseEvent = event;
-            event.preventDefault(); // Prevent default context menu
-            handler.handleClick(mouseEvent);
-        });
-        document.addEventListener('mousemove', function(event) {
-            const mouseEvent = event;
-            handler.handleMouseMove(mouseEvent);
-        });
-        document.addEventListener("mouseout", function(event) {
-            const mouseEvent = event;
-            handler.handleMouseOut(mouseEvent);
-        });
-        document.addEventListener("keydown", function(event) {
-            const keyboardEvent = event;
-            // if (keyboardEvent.key === '`' || keyboardEvent.code === 'Backquote' || keyboardEvent.keyCode === 192) {
-            //     console.log("switching canvas");
-            //     event.preventDefault(); // Prevent default tab behavior (focus change)
-            //     toggleCanvas(redrawScene, () => { orthoEvents.onDisplay!(); });
-            //     return;
-            // }
-            handler.handleKeyDown(keyboardEvent);
-        });
+// TODO TODO TODO: Refactor to request a redraw after it changes. 
+parcelHelpers.export(exports, "World", ()=>World);
+var _model = require("model");
+class World {
+    constructor(width, height){
+        this.board = [] // 2D array of numbers (elevations)
+        ;
+        this.textureCanvas = null;
+        this.textureCtx = null;
+        this.usingTexture = false;
+        this.hoveredTile = null;
+        this.renderer = null;
+        this.dontRedraw = false // enable this to do a number of operations
+        ;
+        this.eventHandler = {
+            setHoveredTile: (x, y)=>{
+                this.hoveredTile = new (0, _model.Point)(x, y);
+                this.redraw();
+            },
+            clearHoveredTile: ()=>{
+                this.hoveredTile = null;
+                this.redraw();
+            },
+            changeTileElevation: (x, y, delta)=>{
+                this.changeElevation(x, y, delta, false);
+            },
+            changeTileElevationBulk: (x, y, delta)=>{
+                this.changeElevation(x, y, delta, true);
+            },
+            setTexture: (img)=>{
+                this.textureCanvas = document.createElement("canvas");
+                this.textureCanvas.width = img.width;
+                this.textureCanvas.height = img.height;
+                this.textureCtx = this.textureCanvas.getContext("2d"); // Assert non-null
+                this.textureCtx.drawImage(img, 0, 0);
+                this.usingTexture = true;
+                this.initBoard(img.width, img.height);
+                this.redraw();
+            },
+            clearTexture: ()=>{
+                this.clearTexture();
+            },
+            reset: ()=>{
+                this.dontRedraw = true;
+                this.clearTexture();
+                this.initBoard();
+                this.dontRedraw = false;
+                this.redraw();
+            }
+        };
+        this.initBoard(width, height);
     }
-};
-class IsometricEvents {
-    constructor(worldHandler){
-        this.worldHandler = worldHandler;
+    redraw() {
+        if (this.dontRedraw) return;
+        this.renderer?.redraw();
     }
-    translateEventPointToViewport(clientX, clientY) {
-        const canvas = document.getElementById("myCanvas");
-        const rect = canvas.getBoundingClientRect();
-        const offsetX1 = canvas.width / 2;
-        const offsetY1 = 50;
-        const screenX1 = clientX - rect.left;
-        const screenY1 = clientY - rect.top;
-        return (0, _model.Point)(screenX1, screenY1);
-    }
-    translateEventPointToIsometricPoint(clientX, clientY) {
-    // todo
-    }
-    handleClick(event) {
-        const { x, y } = screenToIso(screenX, screenY, offsetX, offsetY);
-        const boardX = Math.floor(x);
-        const boardY = Math.floor(y);
-        if (event.button === 0) (0, _worldDefault.default).increaseElevation(boardX, boardY, event.shiftKey);
-        else if (event.button === 2) (0, _worldDefault.default).decreaseElevation(boardX, boardY, event.shiftKey);
-        redrawScene();
-    }
-    handleMouseMove(event) {
-        console.log("mouse move " + event);
-        const canvas = document.getElementById("myCanvas");
-        const rect = canvas.getBoundingClientRect();
-        const offsetX1 = canvas.width / 2;
-        const offsetY1 = 50; // Consistent offset with drawScene
-        const screenX1 = event.clientX - rect.left;
-        const screenY1 = event.clientY - rect.top;
-        const { x, y } = screenToIso(screenX1, screenY1, offsetX1, offsetY1);
-        const boardX = Math.floor(x);
-        const boardY = Math.floor(y);
-        if (highlightedTile === null || highlightedTile.x !== boardX || highlightedTile.y !== boardY) {
-            highlightedTile = {
-                x: boardX,
-                y: boardY
-            };
-            redrawScene(); // Redraw on *every* mouse move that changes the highlighted tile
+    initBoard(width = 16, height = 16) {
+        this.board = [];
+        for(let y = 0; y < height; y++){
+            let row = [];
+            for(let x = 0; x < width; x++)row.push(0); // Initialize all elevations to 0
+            this.board.push(row);
         }
     }
-    handleMouseOut(event) {
-        highlightedTile = null;
-        redrawScene();
+    getTile(boardX, boardY) {
+        if (boardX >= 0 && boardX < this.board[0].length && boardY >= 0 && boardY < this.board.length) return this.board[boardY][boardX];
+        return null; // Or handle out-of-bounds differently
     }
-    handleKeyDown(event) {
-        if (event.key === 'r') {
-            (0, _worldDefault.default).rotateWorld(event.shiftKey);
-            redrawScene();
+    setTile(boardX, boardY, elevation) {
+        if (boardX >= 0 && boardX < this.board[0].length && boardY >= 0 && boardY < this.board.length) this.board[boardY][boardX] = elevation;
+    }
+    getHoveredTile() {
+        return this.hoveredTile;
+    }
+    getPixel(boardX, boardY) {
+        if (!this.textureCtx) return "#000000"; // Default color if no texture
+        let texX = boardX;
+        let texY = boardY;
+        // Bounds Check
+        if (texX < 0 || texX >= this.textureCanvas.width || texY < 0 || texY >= this.textureCanvas.height) return "#000000"; //Return black if out of bounds.
+        const pixelData = this.textureCtx.getImageData(texX, texY, 1, 1).data;
+        return `rgb(${pixelData[0]}, ${pixelData[1]}, ${pixelData[2]})`;
+    }
+    getWidth() {
+        return this.board[0].length;
+    }
+    getHeight() {
+        return this.board.length;
+    }
+    changeElevation(boardX, boardY, delta, bulkEdit) {
+        if (boardX >= 0 && boardX < this.getWidth() && boardY >= 0 && boardY < this.getHeight()) {
+            if (bulkEdit && this.usingTexture) {
+                const targetColor = this.getPixel(boardX, boardY);
+                for(let y = 0; y < this.getHeight(); y++){
+                    for(let x = 0; x < this.getWidth(); x++)if (this.getPixel(x, y) === targetColor) this.setTile(x, y, Math.max(0, this.getTile(x, y) + delta)); // Assert non-null
+                }
+            } else this.setTile(boardX, boardY, Math.max(0, this.getTile(boardX, boardY) + delta)); // Assert non-null
         }
+        this.redraw();
+    }
+    rotateWorld(counterClockwise = false) {
+        // --- Rotate Texture (if using texture) ---
+        if (this.usingTexture && this.textureCanvas) {
+            const rotatedCanvas = document.createElement('canvas');
+            rotatedCanvas.width = this.textureCanvas.height; // Swap width/height
+            rotatedCanvas.height = this.textureCanvas.width;
+            const rotatedCtx = rotatedCanvas.getContext('2d'); // Assert non-null
+            rotatedCtx.clearRect(0, 0, rotatedCanvas.width, rotatedCanvas.height); //Clear
+            if (counterClockwise) {
+                rotatedCtx.rotate(-Math.PI / 2);
+                rotatedCtx.drawImage(this.textureCanvas, -this.textureCanvas.width, 0);
+            } else {
+                rotatedCtx.rotate(Math.PI / 2);
+                rotatedCtx.drawImage(this.textureCanvas, 0, -this.textureCanvas.height);
+            }
+            this.textureCanvas = rotatedCanvas; // Replace the old canvas
+            this.textureCtx = rotatedCtx;
+        }
+        // --- Rotate Board ---
+        let newBoard;
+        if (!counterClockwise) newBoard = this.board[0].map((val, index)=>this.board.map((row)=>row[index]).reverse());
+        else newBoard = this.board[0].map((val, index)=>this.board.map((row)=>row[row.length - 1 - index]));
+        this.board = newBoard; // Assign the new board
+        this.redraw();
+    }
+    clearTexture() {
+        this.usingTexture = false;
+        this.textureCanvas = null;
+        this.textureCtx = null;
+        this.redraw();
     }
 }
 
-},{"./world":"1L67l","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./iso-renderer":"ekh73","./model":"1hsjm"}],"1hsjm":[function(require,module,exports,__globalThis) {
+},{"model":"1hsjm","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"1hsjm":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "Point", ()=>Point);
@@ -1143,6 +1026,114 @@ class Tile {
     }
 }
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["bTHtU","h7u1C"], "h7u1C", "parcelRequire94c2")
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"fUbgX":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "IsometricContext", ()=>IsometricContext);
+var _model = require("model");
+class IsometricContext {
+    constructor(canvas, tileWidth = 16, tileHeight = 8){
+        this.canvas = canvas;
+        this.tileWidth = tileWidth;
+        this.tileHeight = tileHeight;
+    }
+    baseTranslation() {
+        return new (0, _model.Point)(this.canvas.width / 2, 250);
+    }
+    screenToIso(screenX, screenY) {
+        const baseT = this.baseTranslation();
+        const isoX = screenX - baseT.x;
+        const isoY = screenY - baseT.y;
+        const boardXMaybeFloat = (isoX / (this.tileWidth / 2) + isoY / (this.tileHeight / 2)) / 2;
+        const boardYMaybeFloat = (isoY / (this.tileHeight / 2) - isoX / (this.tileWidth / 2)) / 2;
+        const boardX = Math.floor(boardXMaybeFloat);
+        const boardY = Math.floor(boardYMaybeFloat);
+        return {
+            boardX: boardX,
+            boardY: boardY
+        };
+    }
+    tileVertices(boardX, boardY, zHeight) {
+        const isoX = (boardX - boardY) * this.tileWidth / 2;
+        const isoY = (boardX + boardY) * this.tileHeight / 2;
+        const topOffsetY = -zHeight * this.tileHeight;
+        return {
+            v1x: isoX,
+            v1y: isoY + topOffsetY,
+            v2x: isoX + this.tileWidth / 2,
+            v2y: isoY + this.tileHeight / 2 + topOffsetY,
+            v3x: isoX,
+            v3y: isoY + this.tileHeight + topOffsetY,
+            v4x: isoX - this.tileWidth / 2,
+            v4y: isoY + this.tileHeight / 2 + topOffsetY,
+            v5y: isoY + this.tileHeight,
+            v6y: isoY + this.tileHeight / 2,
+            v7y: isoY + this.tileHeight / 2
+        };
+    }
+    tilePath(context, v1x, v1y, v2x, v2y, v3x, v3y, v4x, v4y) {
+        context.beginPath();
+        context.moveTo(v1x, v1y);
+        context.lineTo(v2x, v2y);
+        context.lineTo(v3x, v3y);
+        context.lineTo(v4x, v4y);
+        context.closePath();
+    }
+}
+
+},{"model":"1hsjm","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"dVI9N":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "IsometricEventHandler", ()=>IsometricEventHandler);
+var _model = require("model");
+class IsometricEventHandler {
+    constructor(canvas, isoCtx, worldHandler){
+        this.isoCanvas = canvas;
+        this.isoCtx = isoCtx;
+        this.worldHandler = worldHandler;
+    }
+    translateEventPointToViewport(clientX, clientY) {
+        const rect = this.isoCanvas.getBoundingClientRect();
+        const screenX = clientX - rect.left;
+        const screenY = clientY - rect.top;
+        return new (0, _model.Point)(screenX, screenY);
+    }
+    translateEventToIsometricGrid(event) {
+        const clientX = event.clientX;
+        const clientY = event.clientY;
+        const screenPoint = this.translateEventPointToViewport(clientX, clientY);
+        console.log(`Client coordinates: (${clientX}, ${clientY})`);
+        console.log(`Screen coordinates: (${screenPoint.x}, ${screenPoint.y})`);
+        const isoPoint = this.isoCtx.screenToIso(screenPoint.x, screenPoint.y);
+        console.log(`Isometric coordinates: (${isoPoint.boardX}, ${isoPoint.boardY})`);
+        return isoPoint;
+    }
+    // private translateEventToIsometricGrid(event: MouseEvent) : TileCoordinates {
+    //     return this.translateEventPointsToIsometricGrid(event.clientX, event.clientY);
+    // }
+    handleClick(event) {
+        console.log("handleClick: " + event);
+        const { boardX, boardY } = this.translateEventToIsometricGrid(event);
+        let delta;
+        if (event.button === 0) delta = 1;
+        else if (event.button === 2) delta = -1;
+        else return; // Ignore other buttons
+        if (event.shiftKey) this.worldHandler.changeTileElevationBulk(boardX, boardY, delta);
+        else this.worldHandler.changeTileElevation(boardX, boardY, delta);
+    }
+    handleMouseMove(event) {
+        const { boardX, boardY } = this.translateEventToIsometricGrid(event);
+        console.log("mouse event " + event + " at board(" + boardX + ", " + boardY + ")");
+        this.worldHandler.setHoveredTile(boardX, boardY);
+    }
+    handleMouseOut(event) {
+        this.worldHandler.clearHoveredTile();
+    }
+    handleKeyDown(event) {
+        event.key;
+    }
+}
+
+},{"model":"1hsjm","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["bTHtU","h7u1C"], "h7u1C", "parcelRequire94c2")
 
 //# sourceMappingURL=index.b71e74eb.js.map
