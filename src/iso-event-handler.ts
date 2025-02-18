@@ -31,11 +31,11 @@ export class IsometricEventHandler implements CanvasEventHandler {
         const clientY = event.clientY;
         const viewportPoint: Point = this.translateEventPointToViewport(clientX, clientY);
         
-        console.log(`Client coordinates: (${clientX}, ${clientY})`);
-        console.log(`Screen coordinates: (${viewportPoint.x}, ${viewportPoint.y})`);
+        // console.log(`Client coordinates: (${clientX}, ${clientY})`);
+        // console.log(`Screen coordinates: (${viewportPoint.x}, ${viewportPoint.y})`);
         
         const isoPoint =  this.isoCtx.screenToIso(viewportPoint.x, viewportPoint.y);
-        console.log(`Isometric coordinates: (${isoPoint.boardX}, ${isoPoint.boardY})`);
+        // console.log(`Isometric coordinates: (${isoPoint.boardX}, ${isoPoint.boardY})`);
         
         return isoPoint;
     }
@@ -83,6 +83,12 @@ export class IsometricEventHandler implements CanvasEventHandler {
             this.worldHandler.rotateWorld(clockwise);
         } if (event.key === 'e') {
             this.worldHandler.rotateWorld(cclockwise);
+        }
+
+        if (event.key === '-') {
+            this.isoCtx.decTileSize();
+        } else if (event.key === '=') {
+            this.isoCtx.incTileSize();
         }
     } 
     // // todo: bring back rotation

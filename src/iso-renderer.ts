@@ -68,6 +68,7 @@ class IsoRenderer {
 
     constructor(isometricContext: IsometricContext, world: World) {
         this.isoContext = isometricContext;
+        this.isoContext.registerOnRenderNeededListener(this);
         this.canvas = isometricContext.canvas;
         this.ctx = this.canvas.getContext("2d")!; // Assert non-null, checked below
         this.world = world;
@@ -118,7 +119,7 @@ class IsoRenderer {
 
     private drawScene(): void {
         const world = this.world;
-        
+
         for (let boardY = 0; boardY < world.getHeight(); boardY++) {
             for (let boardX = 0; boardX < world.getWidth(); boardX++) {
                 const elevation = world.getTile(boardX, boardY)!; // Assert non-null, as we're within bounds
@@ -130,7 +131,7 @@ class IsoRenderer {
                     tileColor = getColorByElevation(elevation);
                 }
 
-                const highlightedTile = world.getHoveredTile(); 
+                const highlightedTile = world.getHoveredTile();
                 const isHighlighted: boolean = (highlightedTile &&
                     highlightedTile.x === boardX &&
                     highlightedTile.y === boardY) || false;
@@ -181,11 +182,18 @@ class IsoRenderer {
     }
 
     public redraw(): void {
-        const offsetX = this.isoContext.offsetX;
-        const offsetY = this.isoContext.offsetY;
-        this.ctx.clearRect(-offsetX, -offsetY, this.canvas.width, this.canvas.height);
+        // Store the current transformation matrix
+        this.ctx.save();
+
+        // Use the identity matrix while clearing the canvas
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Restore the transform
+        this.ctx.restore();
         this.drawScene();
     }
+
 }
 
 export { IsoRenderer };
