@@ -119,7 +119,6 @@ class IsoRenderer {
     private drawScene(): void {
         const world = this.world;
         
-
         for (let boardY = 0; boardY < world.getHeight(); boardY++) {
             for (let boardX = 0; boardX < world.getWidth(); boardX++) {
                 const elevation = world.getTile(boardX, boardY)!; // Assert non-null, as we're within bounds

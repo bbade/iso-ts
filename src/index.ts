@@ -16,3 +16,5 @@ const buttonEventHandler = new Buttons(world.eventHandler);
 
 const isoRenderer = new IsoRenderer(isoCtx, world); // Create IsoRenderer instance
 MouseListener.initializeListeners( isoEventHandler); // Initialize mouse listeners
+
+buttonEventHandler.registerListeners(); // Register button listeners

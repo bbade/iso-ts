@@ -18,6 +18,7 @@ export interface WorldEventHandler {
     setTexture(texture: HTMLImageElement): void; 
     clearTexture(): void;
     reset(): void;
+    rotateWorld(counterClockwise: boolean): void;
 }
 
 // TODO TODO TODO: Refactor to request a redraw after it changes. 
@@ -160,22 +161,22 @@ export class World {
     }
 
     readonly eventHandler: WorldEventHandler = {
-        setHoveredTile: (x: number, y: number):  void => {
+        setHoveredTile: (x: number, y: number): void => {
             this.hoveredTile = new Point(x, y);
             this.redraw();
         },
         clearHoveredTile: (): void => {
-            this.hoveredTile= null;
+            this.hoveredTile = null;
             this.redraw();
         },
-        changeTileElevation:(x: number, y: number, delta: number): void => {
-            this.changeElevation(x, y, delta, false); 
+        changeTileElevation: (x: number, y: number, delta: number): void => {
+            this.changeElevation(x, y, delta, false);
         },
         changeTileElevationBulk: (x: number, y: number, delta: number): void => {
-            this.changeElevation(x, y, delta, true); 
+            this.changeElevation(x, y, delta, true);
         },
 
-        setTexture: (img: HTMLImageElement ): void => {
+        setTexture: (img: HTMLImageElement): void => {
             this.textureCanvas = document.createElement("canvas");
             this.textureCanvas.width = img.width;
             this.textureCanvas.height = img.height;
@@ -186,7 +187,7 @@ export class World {
 
             this.redraw();
         },
-    
+
         clearTexture: (): void => {
             this.clearTexture();
         },
@@ -197,7 +198,9 @@ export class World {
             this.initBoard();
             this.dontRedraw = false;
             this.redraw();
-         }
-
+        },
+        rotateWorld: (direction: boolean): void => {
+           this.rotateWorld(direction);
+        }
     }
 };

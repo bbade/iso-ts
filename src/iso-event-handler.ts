@@ -29,12 +29,12 @@ export class IsometricEventHandler implements CanvasEventHandler {
     private translateEventToIsometricGrid(event: MouseEvent) : TileCoordinates {
         const clientX = event.clientX;
         const clientY = event.clientY;
-        const screenPoint: Point = this.translateEventPointToViewport(clientX, clientY);
+        const viewportPoint: Point = this.translateEventPointToViewport(clientX, clientY);
         
         console.log(`Client coordinates: (${clientX}, ${clientY})`);
-        console.log(`Screen coordinates: (${screenPoint.x}, ${screenPoint.y})`);
+        console.log(`Screen coordinates: (${viewportPoint.x}, ${viewportPoint.y})`);
         
-        const isoPoint =  this.isoCtx.screenToIso(screenPoint.x, screenPoint.y);
+        const isoPoint =  this.isoCtx.screenToIso(viewportPoint.x, viewportPoint.y);
         console.log(`Isometric coordinates: (${isoPoint.boardX}, ${isoPoint.boardY})`);
         
         return isoPoint;
@@ -66,7 +66,7 @@ export class IsometricEventHandler implements CanvasEventHandler {
 
     handleMouseMove(event: MouseEvent): void {
         const { boardX, boardY} = this.translateEventToIsometricGrid(event);
-        console.log("mouse event " + event +" at board(" + boardX + ", " + boardY+")");
+        // console.log("mouse event " + event +" at board(" + boardX + ", " + boardY+")");
         this.worldHandler.setHoveredTile(boardX, boardY);
     }
 
@@ -75,8 +75,14 @@ export class IsometricEventHandler implements CanvasEventHandler {
     }
 
     handleKeyDown(event: KeyboardEvent): void {
-        if (event.key === 'r') {
-            // World.rotateWorld(event.shiftKey);
+        const clockwise = true;
+        const cclockwise = false; // these are enum constants
+        console.log(`Key pressed: ${event.key}`);
+
+        if (event.key === 'q') {
+            this.worldHandler.rotateWorld(clockwise);
+        } if (event.key === 'e') {
+            this.worldHandler.rotateWorld(cclockwise);
         }
     } 
     // // todo: bring back rotation
