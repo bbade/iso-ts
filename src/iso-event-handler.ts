@@ -1,11 +1,10 @@
-import { CanvasEventHandler } from './mouse';
-import { IsoRenderer } from './iso-renderer';
+import { KeyHandler } from './documentKeyboardListener';
 import { IsometricContext } from 'iso-context';
 import { Point, TileCoordinates } from 'model';
 import { WorldEventHandler } from 'world';
 import { IsoViewport } from 'iso-viewport';
 
-export class IsometricEventHandler implements CanvasEventHandler {
+export class IsometricEventHandler implements KeyHandler {
 
     private worldHandler: WorldEventHandler;
     private isoCanvas: HTMLCanvasElement;
@@ -22,6 +21,14 @@ export class IsometricEventHandler implements CanvasEventHandler {
         this.isoCtx = isoCtx;
         this.worldHandler = worldHandler;
         this.isoViewport = viewport;
+
+        this.isoCanvas.addEventListener('click', this.handleClick.bind(this));
+        this.isoCanvas.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+            this.handleClick(event);
+        });
+        this.isoCanvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        this.isoCanvas.addEventListener('mouseout', this.handleMouseOut.bind(this));
     }
 
     private translateEventPointToViewport(clientX: number, clientY: number) : Point {
@@ -106,4 +113,6 @@ export class IsometricEventHandler implements CanvasEventHandler {
         // }
     } 
     // // todo: bring back rotation
+
+    
 }

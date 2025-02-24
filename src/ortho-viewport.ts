@@ -1,9 +1,9 @@
 import { World } from "world";
 
-import { ViewportCallbacks } from "mouse";
+import { KeyHandler } from "documentKeyboardListener";
 import { RendererCallbacks } from "renderer-callbacks";
 
-export class OrthoViewport implements ViewportCallbacks, RendererCallbacks {
+export class OrthoViewport implements KeyHandler, RendererCallbacks {
 
     private orthoCanvas: HTMLCanvasElement;
     private world: World;
@@ -11,6 +11,27 @@ export class OrthoViewport implements ViewportCallbacks, RendererCallbacks {
     constructor(orthoCanvas: HTMLCanvasElement, world: World) {
         this.orthoCanvas = orthoCanvas;
         this.world = world;
+    }
+    handleKeyDown(event: KeyboardEvent): void {
+        switch (event.key) {
+            case "ArrowUp":
+                this.moveUp();
+                break;
+            case "ArrowDown":
+                this.moveDown();
+                break;
+            case "ArrowLeft":
+                this.moveLeft();
+                break;
+            case "ArrowRight":
+                this.moveRight();
+                break;
+            case "r":
+                this.recenter();
+                break;
+            default:
+                break;
+        }
     }
     redraw(): void {
         this.draw();
@@ -52,4 +73,6 @@ export class OrthoViewport implements ViewportCallbacks, RendererCallbacks {
             }
         }
     }
+
+
 }

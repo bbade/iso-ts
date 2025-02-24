@@ -1,7 +1,6 @@
 import { IsometricContext } from "iso-context";
-import { RendererCallbacks } from "iso-renderer";
 import { Point } from "model";
-import { ViewportCallbacks } from "mouse";
+import { RendererCallbacks } from "renderer-callbacks";
 import { World } from "world";
 
 export class IsoViewport {
@@ -83,15 +82,6 @@ export class IsoViewport {
         return visibleTiles;
     }
 
-    callbacks(): ViewportCallbacks {
-        return {
-            moveUp: () => this.moveCenter(0, -IsoConstants.delta),
-            moveDown: () => this.moveCenter(0, IsoConstants.delta),
-            moveLeft: () => this.moveCenter(-IsoConstants.delta, 0),
-            moveRight: () => this.moveCenter(IsoConstants.delta, 0),
-            recenter: () => this.recenter(),
-        };
-    }
 }
 
 const IsoConstants = {
