@@ -1,20 +1,27 @@
-
 import { CanvasEventHandler } from './mouse';
 import { IsoRenderer } from './iso-renderer';
 import { IsometricContext } from 'iso-context';
 import { Point, TileCoordinates } from 'model';
 import { WorldEventHandler } from 'world';
+import { IsoViewport } from 'iso-viewport';
 
 export class IsometricEventHandler implements CanvasEventHandler {
 
     private worldHandler: WorldEventHandler;
     private isoCanvas: HTMLCanvasElement;
     private isoCtx: IsometricContext;
+    private isoViewport: IsoViewport;
 
-    constructor(canvas: HTMLCanvasElement, isoCtx: IsometricContext, worldHandler: WorldEventHandler) {
+    constructor(
+        canvas: HTMLCanvasElement,
+         isoCtx: IsometricContext,
+          worldHandler: WorldEventHandler,
+          viewport: IsoViewport,
+        ) {
         this.isoCanvas = canvas;
         this.isoCtx = isoCtx;
         this.worldHandler = worldHandler;
+        this.isoViewport = viewport;
     }
 
     private translateEventPointToViewport(clientX: number, clientY: number) : Point {
@@ -39,10 +46,6 @@ export class IsometricEventHandler implements CanvasEventHandler {
         
         return isoPoint;
     }
-
-    // private translateEventToIsometricGrid(event: MouseEvent) : TileCoordinates {
-    //     return this.translateEventPointsToIsometricGrid(event.clientX, event.clientY);
-    // }
 
     handleClick(event: MouseEvent): void {
         console.log("handleClick: "+ event);
@@ -90,6 +93,17 @@ export class IsometricEventHandler implements CanvasEventHandler {
         } else if (event.key === '=') {
             this.isoCtx.incTileSize();
         }
+            
+        // // Move viewport with w, a, s, d keys
+        // if (event.key === 'w') {
+        //     this.isoViewport.moveCenter(0, -1);
+        // } else if (event.key === 'a') {
+        //     this.isoViewport.moveCenter(-1, 0);
+        // } else if (event.key === 's') {
+        //     this.isoViewport.moveCenter(0, 1);
+        // } else if (event.key === 'd') {
+        //     this.isoViewport.moveCenter(1, 0);
+        // }
     } 
     // // todo: bring back rotation
 }

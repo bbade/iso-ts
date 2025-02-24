@@ -1,7 +1,7 @@
 // World.ts
 
 import { Point } from "model";
-import {RendererCallbacks} from "iso-renderer";
+import {RendererCallbacks} from "renderer-callbacks";
 
 type TileCoordinates = Point;
 
@@ -71,7 +71,7 @@ export class World {
         return this.hoveredTile;
     }
 
-    getPixel(boardX: number, boardY: number): string {
+    getTexel(boardX: number, boardY: number): string {
         if (!this.textureCtx) {
             return "#000000"; // Default color if no texture
         }
@@ -98,13 +98,19 @@ export class World {
         return this.board.length;
     }
 
+    getCenter(): Point {
+        const centerX = Math.floor(this.getWidth() / 2);
+        const centerY = Math.floor(this.getHeight() / 2);
+        return new Point(centerX, centerY);
+    }
+
     changeElevation(boardX: number, boardY: number, delta: number, bulkEdit: boolean): void {
         if (boardX >= 0 && boardX < this.getWidth() && boardY >= 0 && boardY < this.getHeight()) {
             if (bulkEdit && this.usingTexture) {
-                const targetColor = this.getPixel(boardX, boardY);
+                const targetColor = this.getTexel(boardX, boardY);
                 for (let y = 0; y < this.getHeight(); y++) {
                     for (let x = 0; x < this.getWidth(); x++) {
-                        if (this.getPixel(x, y) === targetColor) {
+                        if (this.getTexel(x, y) === targetColor) {
                             this.setTile(x, y, Math.max(0, this.getTile(x, y)! + delta)); // Assert non-null
                         }
                     }

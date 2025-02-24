@@ -1,5 +1,7 @@
 // mouse.ts
 
+import { SceneManager } from "scene-manager";
+
 
 /**
  * These are concrete event handlers that translate events from
@@ -12,14 +14,28 @@ interface CanvasEventHandler {
     handleKeyDown: (event: KeyboardEvent) => void;
 }
 
+export interface ViewportCallbacks {
+    moveUp(): void;
+    moveDown(): void;
+    moveLeft(): void;
+    moveRight(): void;
+    recenter(): void;
+}
 
-/**
- * Singleton that listens to the document for events, then dispatches.
- */
-const MouseListener = {
-    initializeListeners: (handler: CanvasEventHandler) => {
 
+class MouseListener {
+    private viewportCallbacks: ViewportCallbacks | null = null;
+    
+    constructor(
+        handler: CanvasEventHandler, 
+        keyboardHandler: ViewportCallbacks,
+        sceneManager: SceneManager
+    ) {
         console.log("initializing listeners");
+
+        if (!sceneManager) {
+            throw new Error("SceneManager is required");
+        }
 
         const canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
 
@@ -48,10 +64,33 @@ const MouseListener = {
         document.addEventListener("keydown", function (event: KeyboardEvent) {
             const keyboardEvent = event as KeyboardEvent;
             handler.handleKeyDown(keyboardEvent);
+        });
 
+        document.addEventListener("keydown", (event: KeyboardEvent) => {
+            switch (event.key) {
+            case 'w':
+                keyboardHandler.moveUp();
+                break;
+            case 'a':
+                keyboardHandler.moveLeft();
+                break;
+            case 's':
+                keyboardHandler.moveDown();
+                break;
+            case 'd':
+                keyboardHandler.moveRight();
+                break;
+            case 'r':
+                keyboardHandler.recenter();
+                break;
+            case '`':
+                event.preventDefault(); // Prevent default tab behavior
+                sceneManager.toggleCanvases();
+                break;
+            }
         });
     }
-};
+}
 
 export {
     MouseListener,
