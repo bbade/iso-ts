@@ -57,6 +57,8 @@ export class IsometricEventHandler implements KeyHandler {
     handleClick(event: MouseEvent): void {
         console.log("handleClick: "+ event);
         const { boardX, boardY} = this.translateEventToIsometricGrid(event);
+        event.preventDefault();
+
 
         let delta: number;
         if (event.button === 0) { // Left click
@@ -67,8 +69,10 @@ export class IsometricEventHandler implements KeyHandler {
             return; // Ignore other buttons
         }
 
+        const isCtrl = event.ctrlKey;
+
         if ( event.shiftKey) {
-            this.worldHandler.changeTileElevationBulk(boardX, boardY, delta);
+            this.worldHandler.changeTileElevationBulk(boardX, boardY, delta, !isCtrl);
         } else {
             this.worldHandler.changeTileElevation(boardX, boardY, delta);
         }

@@ -1,7 +1,7 @@
 // World.ts
 
 import { Point } from "model";
-import {RendererCallbacks} from "renderer-callbacks";
+import { RendererCallbacks } from "renderer-callbacks";
 
 type TileCoordinates = Point;
 
@@ -14,8 +14,8 @@ export interface WorldEventHandler {
     setHoveredTile: (x: number, y: number) => void;
     clearHoveredTile: () => void;
     changeTileElevation: (x: number, y: number, delta: number) => void;
-    changeTileElevationBulk: (x: number, y: number, delta: number) => void;
-    setTexture(texture: HTMLImageElement): void; 
+    changeTileElevationBulk: (x: number, y: number, delta: number, isGlobal: boolean) => void;
+    setTexture(texture: HTMLImageElement): void;
     clearTexture(): void;
     reset(): void;
     rotateWorld(counterClockwise: boolean): void;
@@ -29,7 +29,7 @@ export class World {
     textureCtx = null as CanvasRenderingContext2D | null;
     usingTexture = false;
     private hoveredTile = null as TileCoordinates | null;
-    renderer: RendererCallbacks | null = null; 
+    renderer: RendererCallbacks | null = null;
     dontRedraw: boolean = false; // enable this to do a number of operations
 
     constructor(width: number, height: number) {
@@ -40,7 +40,7 @@ export class World {
         if (this.dontRedraw) {
             return;
         }
-        this.renderer?.redraw(); 
+        this.renderer?.redraw();
     }
 
     initBoard(width: number = 16, height: number = 16): void {
@@ -88,7 +88,7 @@ export class World {
         return `rgb(${pixelData[0]}, ${pixelData[1]}, ${pixelData[2]})`;
     }
 
-    
+
 
     getWidth(): number {
         return this.board[0].length;
@@ -104,23 +104,88 @@ export class World {
         return new Point(centerX, centerY);
     }
 
-    changeElevation(boardX: number, boardY: number, delta: number, bulkEdit: boolean): void {
-        if (boardX >= 0 && boardX < this.getWidth() && boardY >= 0 && boardY < this.getHeight()) {
-            if (bulkEdit && this.usingTexture) {
-                const targetColor = this.getTexel(boardX, boardY);
-                for (let y = 0; y < this.getHeight(); y++) {
-                    for (let x = 0; x < this.getWidth(); x++) {
-                        if (this.getTexel(x, y) === targetColor) {
-                            this.setTile(x, y, Math.max(0, this.getTile(x, y)! + delta)); // Assert non-null
+    changeElevation(boardX: number, boardY: number, delta: number, operation: TileEditType): void {
+        // if (boardX >= 0 && boardX < this.getWidth() && boardY >= 0 && boardY < this.getHeight()) {
+        //     if (bulkEdit && this.usingTexture) {
+        //         const targetColor = this.getTexel(boardX, boardY);
+        //         for (let y = 0; y < this.getHeight(); y++) {
+        //             for (let x = 0; x < this.getWidth(); x++) {
+        //                 if (this.getTexel(x, y) === targetColor) {
+        //                     this.setTile(x, y, Math.max(0, this.getTile(x, y)! + delta));
+        //                 }
+        //             }
+        //         }
+        //     } else {
+
+        //     }
+        // }
+
+        this.redraw();
+
+        switch (operation) {
+            case TileEditType.Single:
+                this.setTile(boardX, boardY, Math.max(0, this.getTile(boardX, boardY)! + delta));
+                break;
+            case TileEditType.Global:
+                if (!this.usingTexture) { break; } else {
+                    const targetColor = this.getTexel(boardX, boardY);
+                    for (let y = 0; y < this.getHeight(); y++) {
+                        for (let x = 0; x < this.getWidth(); x++) {
+                            if (this.getTexel(x, y) === targetColor) {
+                                this.setTile(x, y, Math.max(0, this.getTile(x, y)! + delta));
+                            }
                         }
                     }
                 }
-            } else {
-                this.setTile(boardX, boardY, Math.max(0, this.getTile(boardX, boardY)! + delta)); // Assert non-null
+                break;
+            case TileEditType.Flood:
+                this.floodIter(boardX, boardY, (x, y) => {
+                    this.setTile(x, y, Math.max(0, this.getTile(x, y)! + delta));
+                });
+                break;
+        }
+
+        this.redraw();
+    }
+
+    floodIter(boardX: number, boardY: number, op: (x: number, y: number) => void): void {
+        if (!this.textureCtx) {
+            return;
+        }
+
+        const targetColor = this.getTexel(boardX, boardY);
+        const visited = new Set<string>();
+        const stack = [{ x: boardX, y: boardY }];
+
+        const key = (x: number, y: number) => `${x},${y}`;
+
+        while (stack.length > 0) {
+            const { x, y } = stack.pop()!;
+            if (visited.has(key(x, y))) {
+                continue;
+            }
+
+            visited.add(key(x, y));
+            op(x, y);
+
+            const neighbors = [
+                { x: x + 1, y },
+                { x: x - 1, y },
+                { x, y: y + 1 },
+                { x, y: y - 1 }
+            ];
+
+            for (const neighbor of neighbors) {
+                if (
+                    neighbor.x >= 0 && neighbor.x < this.getWidth() &&
+                    neighbor.y >= 0 && neighbor.y < this.getHeight() &&
+                    !visited.has(key(neighbor.x, neighbor.y)) &&
+                    this.getTexel(neighbor.x, neighbor.y) === targetColor
+                ) {
+                    stack.push(neighbor);
+                }
             }
         }
-        
-        this.redraw();
     }
 
     rotateWorld(counterClockwise: boolean = false): void {
@@ -145,13 +210,13 @@ export class World {
             this.textureCanvas = rotatedCanvas; // Replace the old canvas
             this.textureCtx = rotatedCtx;
         }
-          // --- Rotate Board ---
+        // --- Rotate Board ---
         let newBoard: number[][];
-        if(!counterClockwise){
+        if (!counterClockwise) {
             newBoard = this.board[0].map((val, index) => this.board.map(row => row[index]).reverse());
         }
-        else{
-            newBoard = this.board[0].map((val, index) => this.board.map(row => row[row.length-1-index]));
+        else {
+            newBoard = this.board[0].map((val, index) => this.board.map(row => row[row.length - 1 - index]));
         }
         this.board = newBoard; // Assign the new board
 
@@ -176,10 +241,11 @@ export class World {
             this.redraw();
         },
         changeTileElevation: (x: number, y: number, delta: number): void => {
-            this.changeElevation(x, y, delta, false);
+            this.changeElevation(x, y, delta, TileEditType.Single);
         },
-        changeTileElevationBulk: (x: number, y: number, delta: number): void => {
-            this.changeElevation(x, y, delta, true);
+        changeTileElevationBulk: (x: number, y: number, delta: number, isGlobal: boolean): void => {
+            const op = isGlobal? TileEditType.Global : TileEditType.Flood;
+            this.changeElevation(x, y, delta, op);
         },
 
         setTexture: (img: HTMLImageElement): void => {
@@ -206,7 +272,13 @@ export class World {
             this.redraw();
         },
         rotateWorld: (direction: boolean): void => {
-           this.rotateWorld(direction);
+            this.rotateWorld(direction);
         }
     }
 };
+
+export enum TileEditType {
+    Single,
+    Global,
+    Flood
+}
