@@ -30,7 +30,8 @@ const orthoViewport = new OrthoViewport(orthoCanvas, world);
 
 const sceneManager = new SceneManager(
     new Scene(isoCanvas, isoEventHandler, isoRenderer),
-    new Scene(orthoCanvas, orthoViewport, orthoViewport)
+    new Scene(orthoCanvas, orthoViewport, orthoViewport),
+    world
 );
 
 
@@ -38,4 +39,3 @@ const keyboardListener = new InputListener(
     sceneManager
 );
 
-buttonEventHandler.registerListeners(); // Register button listeners
