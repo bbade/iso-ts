@@ -89,7 +89,7 @@ class IsoRenderer implements RendererCallbacks {
 
         for (let boardY = 0; boardY < world.getHeight(); boardY++) {
             for (let boardX = 0; boardX < world.getWidth(); boardX++) {
-                const elevation = world.getTile(boardX, boardY)!; // Assert non-null, as we're within bounds
+                const elevation = world.getTile(boardX, boardY)!; 
                 let tileColor: string;
 
                 if (world.usingTexture) {
@@ -104,6 +104,10 @@ class IsoRenderer implements RendererCallbacks {
                     highlightedTile.y === boardY) 
 
                 for (let elev = 0; elev <= elevation; elev++) {
+                    // todo: it would be faster to draw a single tall tile for cases where we arent' doing voxels (always),
+                    // but this would limit future expansion if i ever did want to do voxels. If we want an optimized version,
+                    // we could instead do a single draw command. This would require a new drawTile, adn also new vertex calculations
+                    // in IsoContext.
                     this.drawTile(boardX, boardY, elev, tileColor, this.ctx, isHighlighted);
                 }
             }

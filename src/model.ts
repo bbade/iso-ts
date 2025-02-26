@@ -25,6 +25,10 @@ export interface TileCoordinates {
     boardY: number;
 }
 
+export function TileCoordinates(x: number, y: number): TileCoordinates {
+    return { boardX: x, boardY: y };
+}
+
 export interface Vertices {
     v1x: number;
     v1y: number;
